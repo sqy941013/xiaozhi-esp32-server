@@ -11,6 +11,10 @@ logger = setup_logging()
 
 # 需要禁用思考模式的平台域名及其对应参数（默认关闭思考模式）
 THINKING_DISABLED_DOMAINS = {
+    # MiniMax M2.7 does not expose a switch to disable reasoning. Its official
+    # OpenAI-compatible API can split reasoning out of `content`, preventing
+    # Xiaozhi from displaying or speaking the <think> trace.
+    "minimaxi.com": {"reasoning_split": True},
     "aliyuncs.com": {"enable_thinking": False},
     "deepseek.com": {"thinking": {"type": "disabled"}},
     "bigmodel.cn": {"thinking": {"type": "disabled"}},

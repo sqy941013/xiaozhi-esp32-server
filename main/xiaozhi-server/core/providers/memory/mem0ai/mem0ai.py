@@ -1,6 +1,7 @@
 import json
 import asyncio
 import traceback
+import httpx
 
 from ..base import MemoryProviderBase, logger
 from mem0 import MemoryClient
@@ -13,6 +14,7 @@ class MemoryProvider(MemoryProviderBase):
     def __init__(self, config, summary_memory=None):
         super().__init__(config)
         self.api_key = config.get("api_key", "")
+        self.base_url = config.get("base_url", "").rstrip("/")
         self.api_version = config.get("api_version", "v1.1")
         model_key_msg = check_model_key("Mem0ai", self.api_key)
         if model_key_msg:
@@ -23,8 +25,19 @@ class MemoryProvider(MemoryProviderBase):
             self.use_mem0 = True
 
         try:
-            self.client = MemoryClient(api_key=self.api_key)
-            logger.bind(tag=TAG).info("成功连接到 Mem0ai 服务")
+            if self.base_url:
+                self.client = httpx.Client(
+                    base_url=self.base_url,
+                    headers={"X-API-Key": self.api_key},
+                    timeout=300.0,
+                )
+                response = self.client.get("/")
+                if response.status_code not in (200, 307):
+                    response.raise_for_status()
+                logger.bind(tag=TAG).info(f"成功连接到自托管 Mem0 服务: {self.base_url}")
+            else:
+                self.client = MemoryClient(api_key=self.api_key)
+                logger.bind(tag=TAG).info("成功连接到 Mem0ai 云服务")
         except Exception as e:
             logger.bind(tag=TAG).error(f"连接到 Mem0ai 服务时发生错误: {str(e)}")
             logger.bind(tag=TAG).error(f"详细错误: {traceback.format_exc()}")
@@ -60,9 +73,18 @@ class MemoryProvider(MemoryProviderBase):
 
                     messages.append({"role": message.role, "content": content})
 
-                result = await asyncio.to_thread(
-                    self.client.add, messages, user_id=self.role_id
-                )
+                if self.base_url:
+                    response = await asyncio.to_thread(
+                        self.client.post,
+                        "/memories",
+                        json={"messages": messages, "user_id": self.role_id},
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+                else:
+                    result = await asyncio.to_thread(
+                        self.client.add, messages, user_id=self.role_id
+                    )
                 logger.bind(tag=TAG).debug(f"Save memory result: {result}")
         except Exception as e:
             logger.bind(tag=TAG).error(f"保存记忆失败: {str(e)}")
@@ -87,9 +109,18 @@ class MemoryProvider(MemoryProviderBase):
             except (json.JSONDecodeError, KeyError):
                 pass
 
-            results = await asyncio.to_thread(
-                self.client.search, search_query, filters=filters
-            )
+            if self.base_url:
+                response = await asyncio.to_thread(
+                    self.client.post,
+                    "/search",
+                    json={"query": search_query, "filters": filters},
+                )
+                response.raise_for_status()
+                results = response.json()
+            else:
+                results = await asyncio.to_thread(
+                    self.client.search, search_query, filters=filters
+                )
             if not results or "results" not in results:
                 return ""
 
