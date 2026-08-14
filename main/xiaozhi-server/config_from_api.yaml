@@ -17,6 +17,12 @@ server:
   # 所以如果你使用docker部署时，将vision_explain设置成局域网地址
   # 如果你使用公网部署时，将vision_explain设置成公网地址
   vision_explain: http://你的ip或者域名:端口号/mcp/vision/explain
+  # 独立摄像头安全绑定：主控设备ID -> 允许代其上传图片的摄像头设备ID列表
+  # 仅适用于主控和摄像头为不同芯片、摄像头使用自身Device-Id上传图片的设备
+  # vision_device_bindings:
+  #   "11:22:33:44:55:66":
+  #     - "aa:bb:cc:dd:ee:ff"
+  vision_device_bindings: {}
 manager-api:
   # 你的manager-api的地址，最好使用局域网ip
   # 如果使用docker部署，请使用填写成 http://xiaozhi-esp32-server-web:8002/xiaozhi

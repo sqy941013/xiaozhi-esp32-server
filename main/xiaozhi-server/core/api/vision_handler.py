@@ -7,6 +7,10 @@ from core.utils.util import get_vision_url, is_valid_image_file
 from core.utils.vllm import create_instance
 from config.config_loader import get_private_config_from_api
 from core.utils.auth import AuthToken
+from core.api.vision_device_bindings import (
+    VisionDeviceBindings,
+    normalize_device_id,
+)
 import base64
 from typing import Tuple, Optional
 from plugins_func.register import Action
@@ -22,6 +26,9 @@ class VisionHandler(BaseHandler):
         super().__init__(config)
         # 初始化认证工具
         self.auth = AuthToken(config["server"]["auth_key"])
+        self.vision_device_bindings = VisionDeviceBindings(
+            config["server"].get("vision_device_bindings", {})
+        )
 
     def _create_error_response(self, message: str) -> dict:
         """创建统一的错误响应格式"""
@@ -63,8 +70,23 @@ class VisionHandler(BaseHandler):
             # 获取请求头信息
             device_id = request.headers.get("Device-Id", "")
             client_id = request.headers.get("Client-Id", "")
-            if device_id != token_device_id:
+            controller_device_id = (
+                self.vision_device_bindings.resolve_controller_device_id(
+                    token_device_id, device_id
+                )
+            )
+            if controller_device_id is None:
+                self.logger.bind(tag=TAG).warning(
+                    "视觉接口设备身份不匹配: "
+                    f"token_device_id={normalize_device_id(token_device_id) or '<empty>'}, "
+                    f"request_device_id={normalize_device_id(device_id) or '<empty>'}"
+                )
                 raise ValueError("设备ID与token不匹配")
+            if normalize_device_id(device_id) != controller_device_id:
+                self.logger.bind(tag=TAG).info(
+                    f"允许已绑定摄像头 {normalize_device_id(device_id)} "
+                    f"使用主控设备 {controller_device_id} 的视觉配置"
+                )
             # 解析multipart/form-data请求
             reader = await request.multipart()
 
@@ -106,8 +128,8 @@ class VisionHandler(BaseHandler):
             if read_config_from_api:
                 current_config = await get_private_config_from_api(
                     current_config,
-                    device_id,
-                    client_id,
+                    controller_device_id,
+                    client_id or controller_device_id,
                 )
 
             select_vllm_module = current_config["selected_module"].get("VLLM")
