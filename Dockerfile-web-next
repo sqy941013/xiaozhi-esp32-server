@@ -11,7 +11,7 @@ RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
 
 COPY main/manager-web-next/package.json main/manager-web-next/pnpm-lock.yaml ./
 
-RUN --mount=type=cache,id=xiaozhi-manager-web-next-pnpm,target=/pnpm/store \
+RUN --mount=type=cache,id=xiaozhi-manager-web-pnpm,target=/pnpm/store \
     pnpm config set registry "${PNPM_REGISTRY}" && \
     pnpm config set store-dir /pnpm/store && \
     pnpm install --frozen-lockfile

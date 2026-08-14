@@ -121,6 +121,7 @@ venv.bak/
 
 # Repository-local runtimes and package-manager caches
 /.runtime/
+/.pnpm-store/
 /main/manager-web/.npm-cache/
 
 # Spyder project settings
@@ -155,6 +156,8 @@ tmp
 .DS_Store
 main/xiaozhi-server/data
 main/xiaozhi-server/.claude
+main/xiaozhi-server/.deploy.env
+main/xiaozhi-server/backups/
 
 main/manager-web/node_modules
 .config.yaml

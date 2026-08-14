@@ -26,9 +26,9 @@
 | HTTP | Axios、Springdoc OpenAPI 生成类型 | 统一处理 `Result<T>`、令牌、业务错误和二进制响应 |
 | 国际化 | i18next、react-i18next | 六种语言保持同一键结构，CI 检查缺失键 |
 | 测试 | Vitest、Testing Library、Playwright | 单元测试与浏览器测试目录隔离 |
-| 交付 | Node 22 多阶段构建、Nginx | 独立镜像、健康检查、SPA 深链和 API 反向代理 |
+| 交付 | Node 22 多阶段构建、Nginx、JRE 21 | 预览镜像保持独立；正式镜像组合 React、manager-api、健康检查和 API 反向代理 |
 
-新旧前端采用并行目录和独立镜像。迁移期间 Vue 管理台继续使用 `18002`，React 预览使用 `18012`；只有全部路由、权限、上传下载和高风险操作通过验收后，才在 Compose 中切换生产入口。
+阶段 1–6 采用新旧前端并行目录和独立预览镜像：Vue 管理台继续使用 `18002`，React 预览使用 `18012`。阶段 7 在全部路由、权限、上传下载和高风险操作通过验收后，把正式 `Dockerfile-web` 切换为 React，同时保留可独立运行的预览镜像。
 
 Docker 构建默认通过 `https://registry.npmmirror.com` 下载 pnpm 依赖，并保留 BuildKit 内容缓存；如需切换源，可传入 `--build-arg PNPM_REGISTRY=<registry>`。HTTP/HTTPS 代理继续通过 Docker 标准构建参数注入，不写入镜像层或仓库配置。
 
@@ -42,7 +42,7 @@ Docker 构建默认通过 `https://registry.npmmirror.com` 下载 pnpm 依赖，
 | 4. 智能体与设备 | 首页、角色配置、模板、设备绑定、通讯录、声纹 | 已合并（PR #5） |
 | 5. 知识与媒体 | 知识库、语音资源、声音克隆、OTA | 已合并（PR #6） |
 | 6. 系统管理 | 用户、参数、字典、功能、替换词、服务端管理 | 已完成并验收（PR #7） |
-| 7. 切换与收尾 | Compose 改用本地 React 镜像、全路由回归、升级/回滚演练 | 全量验收后切流，再单独移除 Vue 依赖 |
+| 7. 切换与收尾 | Compose 改用本地 React 镜像、全路由回归、升级/回滚演练 | 本地候选验收通过，待 PR 合并与生产切流 |
 
 每个阶段使用独立分支和 PR；一个阶段合并并通过主分支 CI 后，才开始下一个阶段。这样每次回滚只影响一个业务域，也便于继续跟随上游仓库升级。
 
@@ -52,6 +52,7 @@ Docker 构建默认通过 `https://registry.npmmirror.com` 下载 pnpm 依赖，
 main/manager-web-next/
 ├── e2e/                 # Playwright 业务路径
 ├── nginx/               # 运行时代理和 SPA 配置
+├── public/              # 设备主题生成器、协议页和 favicon 静态资产
 ├── scripts/             # OpenAPI 等生成脚本
 └── src/
     ├── api/             # 生成契约、HTTP 客户端、业务 API
@@ -143,6 +144,16 @@ main/manager-web-next/
 - 所有变更请求只发送一次；用户、参数、字典、替换词、服务端和功能配置的读取错误与部分失败均有明确反馈。
 - 六种语言的系统管理文案由确定性脚本从 Vue 语言包生成，再叠加 React 专用交互文案；测试校验六个完整工作流的关键翻译键。
 - 本机验收结果：ESLint 零警告、严格类型检查、64 项 Vitest、26 项 Playwright、生产构建、Docker 镜像健康检查、六条 SPA 深链检查和生产依赖审计全部通过。
+
+## 阶段 7 切换与交付约束
+
+- 正式 `Dockerfile-web` 使用 Node 22/pnpm 构建 `manager-web-next`，继续在同一容器内运行 Java `manager-api`，因此 `/xiaozhi` 前缀、Compose 服务名、端口和上传目录保持兼容。
+- 设备主题生成器、字体/唤醒词模型、用户协议、隐私政策和 favicon 已迁入 React 的 `public/`，由 Vite 原样复制；设备列表补回带编码设备 ID 的主题生成入口。
+- Web 健康检查必须真实访问公开配置 API，而非只探测 Nginx；Java 或 Nginx 任一进程退出时，监督脚本会终止另一个进程并让容器退出。
+- Spring 数据库和 Redis 配置只通过环境变量绑定，不再作为 Java 命令行参数出现；Nginx API 超时与前端最长请求窗口统一为 180 秒。
+- `docker-compose.source.yml` 只构建本地业务代码，固定 MySQL 8.4 和 Redis 8.0，并允许通过 `.env` 配置源码、运行数据、镜像仓库、端口、国内镜像和 HTTP 代理。
+- `source-deploy.sh` 在升级前生成 0600 权限的 MySQL 逻辑备份，以 UTC 时间和 Git 提交生成不可变镜像标签，只更新两个业务容器，等待健康后记录当前/上一个版本；失败自动恢复应用镜像，支持显式回滚且不自动覆盖数据库。
+- 本地候选验收结果：ESLint 零警告、严格类型检查、65 项 Vitest、26 项 Vite 预览 Playwright、26 项正式 Nginx Playwright、双 Docker 镜像构建、真实 MySQL/Redis 健康检查、23 条 SPA 深链、生成器大文件、协议页、缓存头和进程监督全部通过。
 
 ## 已确认的基线
 

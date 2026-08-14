@@ -11,6 +11,14 @@ on:
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SensitiveDataUtilsTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImplTest.java"
       - "Dockerfile-web-next"
+      - "Dockerfile-web"
+      - "docs/docker/nginx.conf"
+      - "docs/docker/start.sh"
+      - "main/xiaozhi-server/docker-compose.source.yml"
+      - "main/xiaozhi-server/source-deploy.sh"
+      - "main/xiaozhi-server/source.env.example"
+      - "docs/docker-build.md"
+      - "docs/frontend-react-migration.md"
       - ".github/workflows/manager-web-next.yml"
   push:
     branches:
@@ -24,6 +32,14 @@ on:
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SensitiveDataUtilsTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImplTest.java"
       - "Dockerfile-web-next"
+      - "Dockerfile-web"
+      - "docs/docker/nginx.conf"
+      - "docs/docker/start.sh"
+      - "main/xiaozhi-server/docker-compose.source.yml"
+      - "main/xiaozhi-server/source-deploy.sh"
+      - "main/xiaozhi-server/source.env.example"
+      - "docs/docker-build.md"
+      - "docs/frontend-react-migration.md"
       - ".github/workflows/manager-web-next.yml"
 
 permissions:
@@ -85,8 +101,20 @@ jobs:
         run: pnpm test:e2e
 
   docker:
-    name: Build preview image
+    name: Build ${{ matrix.name }} image
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: preview
+            dockerfile: Dockerfile-web-next
+            cache_scope: manager-web-next
+            tag: xiaozhi-manager-web-next:ci
+          - name: production
+            dockerfile: Dockerfile-web
+            cache_scope: manager-web-production
+            tag: xiaozhi-manager-web:ci
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,12 +122,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build preview image
+      - name: Validate deployment files
+        if: matrix.name == 'preview'
+        run: |
+          bash -n docs/docker/start.sh main/xiaozhi-server/source-deploy.sh
+          docker compose \
+            --env-file main/xiaozhi-server/source.env.example \
+            -f main/xiaozhi-server/docker-compose.source.yml \
+            config --quiet
+
+      - name: Build image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile-web-next
+          file: ${{ matrix.dockerfile }}
           push: false
-          tags: xiaozhi-manager-web-next:ci
-          cache-from: type=gha,scope=manager-web-next
-          cache-to: type=gha,mode=max,scope=manager-web-next
+          tags: ${{ matrix.tag }}
+          cache-from: type=gha,scope=${{ matrix.cache_scope }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache_scope }}

@@ -289,6 +289,13 @@ test("binds, adds, edits, and unbinds devices without losing zero-valued switche
   await page.goto("/device-management?agentId=agent-1");
   const firstRow = page.getByRole("row").filter({ hasText: "AA:BB:CC:DD:EE:01" });
   await expect(firstRow.getByText("在线")).toBeVisible();
+  await expect(firstRow.getByRole("link", { name: "设备主题生成" })).toHaveAttribute(
+    "href",
+    "/generator/?deviceId=device-1",
+  );
+  const generatorResponse = await page.request.get("/generator/?deviceId=device-1");
+  expect(generatorResponse.ok()).toBe(true);
+  expect(await generatorResponse.text()).toContain("Xiaozhi AI Customization");
   await firstRow.getByRole("switch", { name: "自动升级" }).click();
   await expect.poll(() => mutations.some((item) => JSON.stringify(item.body) === '{"autoUpdate":0}')).toBe(true);
 

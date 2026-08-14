@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Link2,
   LoaderCircle,
+  Palette,
   Pencil,
   Plus,
   Search,
@@ -44,6 +45,7 @@ import {
   updateDevice,
 } from "@/features/devices/device-api";
 import {
+  deviceGeneratorPath,
   formatDeviceTime,
   isDeviceOnline,
   MAC_ADDRESS_PATTERN,
@@ -247,7 +249,7 @@ export function DeviceManagementPage() {
                     <td className="px-4 py-3"><Badge variant={online ? "default" : "secondary"}>{online ? t("agentCenter.device.online") : t("agentCenter.device.offline")}</Badge></td>
                     <td className="px-4 py-3">{formatDeviceTime(device.createDateTimestamp || device.createDate, i18n.language)}</td>
                     <td className="px-4 py-3"><Switch aria-label={t("agentCenter.device.autoUpdate")} checked={device.autoUpdate === 1} disabled={updateMutation.isPending} onCheckedChange={async (checked) => { if (!device.id) return; try { await updateMutation.mutateAsync({ id: device.id, input: { autoUpdate: checked ? 1 : 0 } }); toast.success(t(checked ? "agentCenter.device.autoUpdateEnabled" : "agentCenter.device.autoUpdateDisabled")); } catch (error) { toast.error(getErrorMessage(error, t("agentCenter.device.remarkSaveFailed"))); } }} /></td>
-                    <td className="px-4 py-3"><div className="flex justify-end gap-1"><Button aria-label={t("agentCenter.device.edit")} onClick={() => { setEditDevice(device); setEditAlias(device.alias || ""); }} size="icon" variant="ghost"><Pencil className="size-4" /></Button><Button aria-label={t("agentCenter.device.unbind")} onClick={() => device.id && setUnbindTargets([device.id])} size="icon" variant="ghost"><Trash2 className="size-4 text-destructive" /></Button></div></td>
+                    <td className="px-4 py-3"><div className="flex justify-end gap-1">{device.id ? <Button asChild size="icon" variant="ghost"><a aria-label={t("agentCenter.device.deviceThemeGeneration")} href={deviceGeneratorPath(device.id, import.meta.env.BASE_URL)} onClick={() => sessionStorage.setItem("devicePath", window.location.href)} title={t("agentCenter.device.deviceThemeGeneration")}><Palette className="size-4" /></a></Button> : null}<Button aria-label={t("agentCenter.device.edit")} onClick={() => { setEditDevice(device); setEditAlias(device.alias || ""); }} size="icon" variant="ghost"><Pencil className="size-4" /></Button><Button aria-label={t("agentCenter.device.unbind")} onClick={() => device.id && setUnbindTargets([device.id])} size="icon" variant="ghost"><Trash2 className="size-4 text-destructive" /></Button></div></td>
                   </tr>
                 );
               })}

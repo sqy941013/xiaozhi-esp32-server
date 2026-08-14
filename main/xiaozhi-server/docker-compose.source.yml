@@ -1,0 +1,123 @@
+name: ${COMPOSE_PROJECT_NAME:-xiaozhi-all}
+
+services:
+  xiaozhi-esp32-server:
+    image: ${XIAOZHI_SERVER_REPOSITORY:-xiaozhi-esp32-server}:${XIAOZHI_IMAGE_TAG:-local}
+    pull_policy: never
+    build:
+      context: ${XIAOZHI_SOURCE_DIR:-../..}
+      dockerfile: Dockerfile-server
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+        no_proxy: ${no_proxy:-}
+    depends_on:
+      xiaozhi-esp32-server-db:
+        condition: service_healthy
+      xiaozhi-esp32-server-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${XIAOZHI_WS_PORT:-8000}:8000"
+      - "${XIAOZHI_VISION_PORT:-8003}:8003"
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ${XIAOZHI_RUNTIME_DIR:-.}/data:/opt/xiaozhi-esp32-server/data
+      - ${XIAOZHI_RUNTIME_DIR:-.}/models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import socket; socket.create_connection(('127.0.0.1', 8000), 5).close()
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 60s
+    stop_grace_period: 30s
+    logging:
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  xiaozhi-esp32-server-web:
+    image: ${XIAOZHI_WEB_REPOSITORY:-xiaozhi-esp32-server-web}:${XIAOZHI_IMAGE_TAG:-local}
+    pull_policy: never
+    build:
+      context: ${XIAOZHI_SOURCE_DIR:-../..}
+      dockerfile: Dockerfile-web
+      args:
+        PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+        no_proxy: ${no_proxy:-}
+    depends_on:
+      xiaozhi-esp32-server-db:
+        condition: service_healthy
+      xiaozhi-esp32-server-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${XIAOZHI_WEB_PORT:-8002}:8002"
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_DATASOURCE_DRUID_URL: "jdbc:mysql://xiaozhi-esp32-server-db:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true&connectTimeout=30000&socketTimeout=30000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10"
+      SPRING_DATASOURCE_DRUID_USERNAME: root
+      SPRING_DATASOURCE_DRUID_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      SPRING_DATA_REDIS_HOST: xiaozhi-esp32-server-redis
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SPRING_DATA_REDIS_PORT: 6379
+    volumes:
+      - ${XIAOZHI_RUNTIME_DIR:-.}/uploadfile:/uploadfile
+    stop_grace_period: 45s
+    logging:
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  xiaozhi-esp32-server-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      timeout: 10s
+      interval: 10s
+      retries: 15
+      start_period: 30s
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: xiaozhi_esp32_server
+    volumes:
+      - ${XIAOZHI_RUNTIME_DIR:-.}/mysql/data:/var/lib/mysql
+    logging:
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  xiaozhi-esp32-server-redis:
+    image: redis:8.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"

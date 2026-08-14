@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  deviceGeneratorPath,
   deviceOnlineKey,
   isDeviceOnline,
   MAC_ADDRESS_PATTERN,
@@ -15,6 +16,13 @@ describe("device utilities", () => {
     expect(MAC_ADDRESS_PATTERN.test("AA:BB:CC:DD:EE:FF")).toBe(true);
     expect(MAC_ADDRESS_PATTERN.test("AA-BB-CC-DD-EE-FF")).toBe(true);
     expect(MAC_ADDRESS_PATTERN.test("AA:BB:CC:DD:EE")).toBe(false);
+  });
+
+  it("builds a base-path-safe device theme generator URL", () => {
+    expect(deviceGeneratorPath("device/1")).toBe("/generator/?deviceId=device%2F1");
+    expect(deviceGeneratorPath("device 2", "/console")).toBe(
+      "/console/generator/?deviceId=device%202",
+    );
   });
 
   it("maps MQTT gateway state to the exact device client key", () => {
