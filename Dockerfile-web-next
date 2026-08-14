@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1.7
+
+FROM node:22-alpine AS web-builder
+
+WORKDIR /app
+
+ENV CI=true
+
+RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
+
+COPY main/manager-web-next/package.json main/manager-web-next/pnpm-lock.yaml ./
+
+RUN --mount=type=cache,id=xiaozhi-manager-web-next-pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store && \
+    pnpm install --frozen-lockfile
+
+COPY main/manager-web-next ./
+
+RUN pnpm build
+
+FROM nginx:1.30-alpine
+
+ENV MANAGER_API_UPSTREAM=http://xiaozhi-esp32-server-web:8003 \
+    NGINX_ENVSUBST_FILTER=MANAGER_API_UPSTREAM
+
+COPY main/manager-web-next/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=web-builder /app/dist /usr/share/nginx/html
+
+EXPOSE 8002
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:8002/healthz || exit 1

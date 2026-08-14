@@ -1,0 +1,95 @@
+name: Manager Web Next CI
+
+on:
+  pull_request:
+    paths:
+      - "main/manager-web-next/**"
+      - "main/manager-api/src/main/java/xiaozhi/modules/sys/controller/SysParamsController.java"
+      - "Dockerfile-web-next"
+      - ".github/workflows/manager-web-next.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "main/manager-web-next/**"
+      - "main/manager-api/src/main/java/xiaozhi/modules/sys/controller/SysParamsController.java"
+      - "Dockerfile-web-next"
+      - ".github/workflows/manager-web-next.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  api-contract:
+    name: Compile manager API contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: main/manager-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Compile manager API
+        run: mvn -B -DskipTests compile
+
+  quality:
+    name: Lint, typecheck, test and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: main/manager-web-next
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: pnpm
+          cache-dependency-path: main/manager-web-next/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run quality gates
+        run: pnpm check
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: pnpm test:e2e
+
+  docker:
+    name: Build preview image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build preview image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile-web-next
+          push: false
+          tags: xiaozhi-manager-web-next:ci
+          cache-from: type=gha,scope=manager-web-next
+          cache-to: type=gha,mode=max,scope=manager-web-next
