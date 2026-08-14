@@ -1,5 +1,6 @@
 import { modelCenterResources } from "@/i18n/model-center-resources";
 import { legacyAgentResources } from "@/i18n/legacy-agent-resources.generated";
+import { legacyMediaResources } from "@/i18n/legacy-media-resources.generated";
 
 const zhCN = {
   app: { name: "小智管理控制台", subtitle: "新一代管理前端" },
@@ -108,6 +109,7 @@ const zhCN = {
   },
   modelCenter: modelCenterResources.zhCN,
   agentCenter: legacyAgentResources.zhCN,
+  mediaCenter: legacyMediaResources.zhCN,
   error: { title: "页面加载失败", unexpected: "出现了未预期的错误。", backHome: "返回首页" },
 };
 
@@ -163,6 +165,7 @@ const zhTW = {
   },
   modelCenter: modelCenterResources.zhTW,
   agentCenter: legacyAgentResources.zhTW,
+  mediaCenter: legacyMediaResources.zhTW,
   error: { title: "頁面載入失敗", unexpected: "發生未預期的錯誤。", backHome: "返回首頁" },
 };
 
@@ -218,6 +221,7 @@ const en = {
   },
   modelCenter: modelCenterResources.en,
   agentCenter: legacyAgentResources.en,
+  mediaCenter: legacyMediaResources.en,
   error: { title: "Unable to load this page", unexpected: "An unexpected error occurred.", backHome: "Back home" },
 };
 
@@ -262,6 +266,7 @@ const de = {
   },
   modelCenter: modelCenterResources.de,
   agentCenter: legacyAgentResources.de,
+  mediaCenter: legacyMediaResources.de,
   error: { title: "Seite konnte nicht geladen werden", unexpected: "Ein unerwarteter Fehler ist aufgetreten.", backHome: "Zur Startseite" },
 };
 
@@ -302,6 +307,7 @@ const ptBR = {
   },
   modelCenter: modelCenterResources.ptBR,
   agentCenter: legacyAgentResources.ptBR,
+  mediaCenter: legacyMediaResources.ptBR,
   error: { title: "Não foi possível carregar a página", unexpected: "Ocorreu um erro inesperado.", backHome: "Voltar ao início" },
 };
 
@@ -342,6 +348,7 @@ const vi = {
   },
   modelCenter: modelCenterResources.vi,
   agentCenter: legacyAgentResources.vi,
+  mediaCenter: legacyMediaResources.vi,
   error: { title: "Không thể tải trang", unexpected: "Đã xảy ra lỗi không mong muốn.", backHome: "Về trang chủ" },
 };
 

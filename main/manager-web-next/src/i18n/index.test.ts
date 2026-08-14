@@ -38,4 +38,16 @@ describe("locale compatibility", () => {
       expect(agentCenter.voicePrintDialog.requiredAudioVector).toBeTruthy();
     }
   });
+
+  it("provides knowledge, voice, and OTA workflows in every locale", () => {
+    for (const resource of Object.values(resources)) {
+      const mediaCenter = resource.translation.mediaCenter;
+      expect(mediaCenter.knowledgeBaseManagement.title).toBeTruthy();
+      expect(mediaCenter.knowledgeFileUpload.retrievalTest).toBeTruthy();
+      expect(mediaCenter.voiceClone.uploadSuccess).toBeTruthy();
+      expect(mediaCenter.voiceResource.title).toBeTruthy();
+      expect(mediaCenter.otaManagement.firmwareManagement).toBeTruthy();
+      expect(mediaCenter.firmwareDialog.invalidFileSize).toBeTruthy();
+    }
+  });
 });

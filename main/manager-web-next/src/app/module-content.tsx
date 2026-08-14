@@ -35,6 +35,18 @@ const ProviderManagementPage = lazy(async () => ({
   default: (await import("@/features/models/provider-management-page"))
     .ProviderManagementPage,
 }));
+const KnowledgeBasePage = lazy(async () => ({
+  default: (await import("@/features/media/knowledge-base-page")).KnowledgeBasePage,
+}));
+const VoiceClonePage = lazy(async () => ({
+  default: (await import("@/features/media/voice-clone-page")).VoiceClonePage,
+}));
+const VoiceResourcePage = lazy(async () => ({
+  default: (await import("@/features/media/voice-resource-page")).VoiceResourcePage,
+}));
+const OtaPage = lazy(async () => ({
+  default: (await import("@/features/media/ota-page")).OtaPage,
+}));
 
 function ModuleLoading() {
   const { t } = useTranslation();
@@ -61,6 +73,14 @@ export function ModuleContent({ route }: { route: ModuleRoute }) {
   else if (route.path === "/model-config") content = <ModelConfigPage />;
   else if (route.path === "/provider-management") {
     content = <ProviderManagementPage />;
+  } else if (route.path === "/knowledge-base-management") {
+    content = <KnowledgeBasePage />;
+  } else if (route.path === "/voice-clone-management") {
+    content = <VoiceClonePage />;
+  } else if (route.path === "/voice-resource-management") {
+    content = <VoiceResourcePage />;
+  } else if (route.path === "/ota-management") {
+    content = <OtaPage />;
   } else content = <ModulePlaceholder route={route} />;
 
   return <Suspense fallback={<ModuleLoading />}>{content}</Suspense>;
