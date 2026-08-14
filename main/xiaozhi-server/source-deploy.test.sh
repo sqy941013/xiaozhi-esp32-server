@@ -30,4 +30,21 @@ IFS= read -r output < "${output_file}"
 [[ "${previous_tag}" == "react-release" ]]
 [[ "${output}" == "Rollback complete: local" ]]
 
-echo "source-deploy rollback regression test passed"
+compose_json="$(docker compose \
+  --env-file "${script_dir}/source.env.example" \
+  -f "${script_dir}/docker-compose.source.yml" \
+  config --format json)"
+python3 -c '
+import json
+import sys
+
+services = json.load(sys.stdin)["services"]
+python_service = "xiaozhi-esp32-server"
+manager_service = "xiaozhi-esp32-server-web"
+python_dependencies = services[python_service].get("depends_on", {})
+manager_dependencies = services[manager_service].get("depends_on", {})
+if manager_service in python_dependencies or python_service in manager_dependencies:
+    raise SystemExit("application services must boot independently")
+' <<< "${compose_json}"
+
+echo "source-deploy regression tests passed"
