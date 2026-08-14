@@ -45,7 +45,12 @@ class MemoryProvider(MemoryProviderBase):
 
     async def save_memory(self, msgs, session_id=None):
         try:
-            if self.use_mem0 and len(msgs) >= 2:
+            if not self.use_mem0:
+                raise RuntimeError("Mem0 client is unavailable")
+            if len(msgs) < 2:
+                return {"results": []}
+
+            if self.use_mem0:
                 # Format the content as a message list for mem0
                 messages = []
                 for message in msgs:
@@ -86,10 +91,10 @@ class MemoryProvider(MemoryProviderBase):
                         self.client.add, messages, user_id=self.role_id
                     )
                 logger.bind(tag=TAG).debug(f"Save memory result: {result}")
+                return result
         except Exception as e:
             logger.bind(tag=TAG).error(f"保存记忆失败: {str(e)}")
-
-        return None
+            raise
 
     async def query_memory(self, query: str) -> str:
         if not self.use_mem0:

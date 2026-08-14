@@ -40,7 +40,7 @@ async def resume_vad_detection(conn: "ConnectionHandler"):
     conn.just_woken_up = False
 
 
-async def startToChat(conn: "ConnectionHandler", text):
+async def startToChat(conn: "ConnectionHandler", text, client_message_id=None):
     # 检查输入是否是JSON格式（包含说话人信息）
     speaker_name = None
     actual_text = text
@@ -87,11 +87,19 @@ async def startToChat(conn: "ConnectionHandler", text):
     if conn.client_is_speaking and conn.client_listen_mode != "manual":
         await handleAbortMessage(conn)
 
-    # 首先进行意图分析，使用实际文本内容
-    intent_handled = await handle_user_intent(conn, actual_text)
+    # Web chat is deliberately text-only and cannot invoke device tools,
+    # wake-word actions, or exit commands.
+    intent_handled = (
+        False
+        if conn.is_web_chat
+        else await handle_user_intent(conn, actual_text)
+    )
 
     if intent_handled:
         # 如果意图已被处理，不再进行聊天
+        return
+
+    if not await conn.begin_web_chat_turn(client_message_id):
         return
 
     # 意图未被处理，继续常规聊天流程，使用实际文本内容
@@ -100,7 +108,23 @@ async def startToChat(conn: "ConnectionHandler", text):
     # 准备开始新会话
     conn.client_abort = False
 
-    conn.executor.submit(conn.chat, actual_text)
+    future = conn.executor.submit(conn.chat, actual_text)
+    if conn.is_web_chat:
+        conn.web_chat_future = future
+
+        def finish_failed_turn(completed_future):
+            try:
+                result = completed_future.result()
+                error_message = None if result is not None else "模型未能生成回复"
+            except Exception:
+                error_message = "模型生成回复时发生错误"
+            if error_message and conn.loop and not conn.loop.is_closed():
+                asyncio.run_coroutine_threadsafe(
+                    conn.fail_web_chat_turn(completed_future, error_message),
+                    conn.loop,
+                )
+
+        future.add_done_callback(finish_failed_turn)
 
 
 async def no_voice_close_connect(conn: "ConnectionHandler", have_voice):

@@ -40,6 +40,11 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_DEV_API_TARGET || "http://127.0.0.1:18002",
           changeOrigin: true,
         },
+        "/xiaozhi-ws": {
+          target: env.VITE_DEV_WS_TARGET || "ws://127.0.0.1:18000",
+          ws: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/xiaozhi-ws/, ""),
+        },
       },
     },
     test: {

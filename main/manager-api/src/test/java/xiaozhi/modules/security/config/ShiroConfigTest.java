@@ -3,6 +3,7 @@ package xiaozhi.modules.security.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -56,5 +57,15 @@ class ShiroConfigTest {
                 "securityManager", Oauth2Realm.class, SessionManager.class);
 
         assertEquals(WebSecurityManager.class, securityManagerFactory.getReturnType());
+    }
+
+    @Test
+    void webChatInternalEndpointsRequireTheServerSecret() {
+        ShiroFilterFactoryBean factory = ShiroConfig.shirFilter(
+                mock(WebSecurityManager.class), mock(SysParamsService.class));
+
+        assertEquals(
+                "server",
+                factory.getFilterChainDefinitionMap().get("/device/web-chat/internal/**"));
     }
 }

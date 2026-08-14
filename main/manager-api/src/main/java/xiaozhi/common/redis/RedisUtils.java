@@ -86,6 +86,38 @@ public class RedisUtils {
         return get(key, NOT_EXPIRE);
     }
 
+    /**
+     * Atomically read and remove a value. This is used for one-time credentials
+     * so concurrent consumers cannot redeem the same value twice.
+     */
+    public Object getAndDelete(String key) {
+        return redisTemplate.opsForValue().getAndDelete(key);
+    }
+
+    /**
+     * Set a value only when the key doesn't already exist.
+     */
+    public boolean setIfAbsent(String key, Object value, long expire) {
+        Boolean created = redisTemplate.opsForValue().setIfAbsent(
+                key, value, expire, TimeUnit.SECONDS);
+        return Boolean.TRUE.equals(created);
+    }
+
+    /**
+     * Delete a key only when its current string value matches the expected
+     * owner. The comparison and delete happen atomically in Redis.
+     */
+    public boolean compareAndDelete(String key, String expectedValue) {
+        String luaScript = "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                + "return redis.call('del', KEYS[1]) else return 0 end";
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
+        redisScript.setScriptText(luaScript);
+        redisScript.setResultType(Long.class);
+        Long deleted = redisTemplate.execute(
+                redisScript, Collections.singletonList(key), expectedValue);
+        return deleted != null && deleted > 0;
+    }
+
     public void delete(String key) {
         redisTemplate.delete(key);
     }

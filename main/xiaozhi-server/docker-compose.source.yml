@@ -62,6 +62,8 @@ services:
         https_proxy: ${https_proxy:-}
         no_proxy: ${no_proxy:-}
     depends_on:
+      xiaozhi-esp32-server:
+        condition: service_healthy
       xiaozhi-esp32-server-db:
         condition: service_healthy
       xiaozhi-esp32-server-redis:

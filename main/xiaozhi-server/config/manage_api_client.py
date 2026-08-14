@@ -220,6 +220,38 @@ async def generate_and_save_chat_title(session_id: str) -> Optional[Dict]:
         return None
 
 
+async def redeem_web_chat_ticket(ticket: str, origin: str = "") -> Optional[Dict]:
+    """Atomically redeem a short-lived manager-console WebSocket ticket."""
+    if not ticket or not ManageApiClient._instance:
+        return None
+    return await ManageApiClient._instance._execute_async_request(
+        "POST",
+        "/device/web-chat/internal/tickets/redeem",
+        json={"ticket": ticket, "origin": origin or ""},
+    )
+
+
+async def update_web_chat_session(
+    session_id: str,
+    status: str,
+    memory_status: str,
+    message: str | None = None,
+) -> Optional[Dict]:
+    """Persist the observable state of a web-chat session in manager-api."""
+    if not session_id or not ManageApiClient._instance:
+        return None
+    payload = {
+        "status": status,
+        "memoryStatus": memory_status,
+        "message": message,
+    }
+    return await ManageApiClient._instance._execute_async_request(
+        "POST",
+        f"/device/web-chat/internal/sessions/{session_id}/status",
+        json=payload,
+    )
+
+
 async def report(
     mac_address: str, session_id: str, chat_type: int, content: str, audio, report_time
 ) -> Optional[Dict]:
