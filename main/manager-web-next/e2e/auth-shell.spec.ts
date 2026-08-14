@@ -44,6 +44,12 @@ async function mockPublicEndpoints(page: Page) {
   await page.route("**/xiaozhi/user/captcha?**", (route) =>
     route.fulfill({ body: transparentGif, contentType: "image/gif" }),
   );
+  await page.route("**/xiaozhi/agent/list**", (route) =>
+    route.fulfill({
+      body: JSON.stringify({ code: 0, data: [], msg: "success" }),
+      contentType: "application/json",
+    }),
+  );
 }
 
 test.beforeEach(async ({ page }) => {

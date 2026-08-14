@@ -47,6 +47,29 @@ const VoiceResourcePage = lazy(async () => ({
 const OtaPage = lazy(async () => ({
   default: (await import("@/features/media/ota-page")).OtaPage,
 }));
+const UserManagementPage = lazy(async () => ({
+  default: (await import("@/features/admin/user-management-page"))
+    .UserManagementPage,
+}));
+const ParamsManagementPage = lazy(async () => ({
+  default: (await import("@/features/admin/params-management-page"))
+    .ParamsManagementPage,
+}));
+const DictManagementPage = lazy(async () => ({
+  default: (await import("@/features/admin/dict-management-page"))
+    .DictManagementPage,
+}));
+const ReplacementWordPage = lazy(async () => ({
+  default: (await import("@/features/admin/replacement-word-page"))
+    .ReplacementWordPage,
+}));
+const ServerSidePage = lazy(async () => ({
+  default: (await import("@/features/admin/server-side-page")).ServerSidePage,
+}));
+const FeatureManagementPage = lazy(async () => ({
+  default: (await import("@/features/admin/feature-management-page"))
+    .FeatureManagementPage,
+}));
 
 function ModuleLoading() {
   const { t } = useTranslation();
@@ -81,6 +104,18 @@ export function ModuleContent({ route }: { route: ModuleRoute }) {
     content = <VoiceResourcePage />;
   } else if (route.path === "/ota-management") {
     content = <OtaPage />;
+  } else if (route.path === "/user-management") {
+    content = <UserManagementPage />;
+  } else if (route.path === "/params-management") {
+    content = <ParamsManagementPage />;
+  } else if (route.path === "/dict-management") {
+    content = <DictManagementPage />;
+  } else if (route.path === "/replacement-word-management") {
+    content = <ReplacementWordPage />;
+  } else if (route.path === "/server-side-management") {
+    content = <ServerSidePage />;
+  } else if (route.path === "/feature-management") {
+    content = <FeatureManagementPage />;
   } else content = <ModulePlaceholder route={route} />;
 
   return <Suspense fallback={<ModuleLoading />}>{content}</Suspense>;
