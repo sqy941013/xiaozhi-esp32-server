@@ -7,7 +7,7 @@
 3.  [Component Deep Dive](#3-component-deep-dive)
     *   [3.1. `xiaozhi-server` (Core AI Engine - Python Implementation)](#31-xiaozhi-server-core-ai-engine---python-implementation)
     *   [3.2. `manager-api` (Management Backend - Java Spring Boot Implementation)](#32-manager-api-management-backend---java-spring-boot-implementation)
-    *   [3.3. `manager-web` (Web Management Frontend - Vue.js Implementation)](#33-manager-web-web-management-frontend---vuejs-implementation)
+    *   [3.3. `manager-web-next` (Web Management Frontend - React Implementation)](#33-manager-web-next-web-management-frontend---react-implementation)
     *   [3.4. `manager-mobile` (Mobile Management Console - uni-app Implementation)](#34-manager-mobile-mobile-management-console---uniapp-implementation)
     *   [3.5. `digital-human` (Digital Human Test Module - Python+Web Implementation)](#35-digital-human-digital-human-test-module---pythonweb-implementation)
 4.  [Data Flow and Interaction Mechanisms](#4-data-flow-and-interaction-mechanisms)
@@ -45,7 +45,7 @@ The `xiaozhi-esp32-server` system adopts a **distributed, multi-component collab
     *   Obtaining its detailed runtime operation configuration from the `manager-api` service.
 
 3.  **`manager-api` (Management Backend - Java Spring Boot Implementation):**
-    This is an application built using the Java Spring Boot framework, providing a secure RESTful API for system management and configuration. It serves not only as the backend support for the `manager-web` console but also as the configuration data source for `xiaozhi-server`. Its core functions include:
+    This is an application built using the Java Spring Boot framework, providing a secure RESTful API for system management and configuration. It serves not only as the backend support for the `manager-web-next` console but also as the configuration data source for `xiaozhi-server`. Its core functions include:
     *   Providing user authentication (login, permission verification) and user account management functions for the Web console.
     *   Registration, information management of ESP32 devices, and maintenance of device-specific configurations.
     *   Persistently storing system configurations in the **MySQL database**, such as user-selected AI service providers, API keys, device parameters, plugin settings, etc.
@@ -53,17 +53,17 @@ The `xiaozhi-esp32-server` system adopts a **distributed, multi-component collab
     *   Managing TTS voice options, handling OTA (Over-The-Air) firmware update processes, and related metadata.
     *   Utilizing **Redis** as a high-speed cache to store hotspot data (such as session information, frequently accessed configurations) to improve API response speed and overall system performance.
 
-4.  **`manager-web` (Web Control Panel - Vue.js Implementation):**
-    This is a Single Page Application (SPA) built with Vue.js, providing system administrators with a graphical, user-friendly operation interface. Its main capabilities include:
+4.  **`manager-web-next` (Web Control Panel - React Implementation):**
+    This Single Page Application is built with React, TypeScript, and Vite and provides the complete graphical administration console. Its main capabilities include:
     *   Conveniently configuring various AI services used by `xiaozhi-server` (such as ASR, LLM, TTS provider switching, parameter adjustment).
     *   Managing platform user accounts, role assignment, and permission control.
     *   Managing registered ESP32 devices and their related settings.
-    *   (Potential functionality) Monitoring system operation status, viewing logs, troubleshooting, etc.
+    *   Managing knowledge bases, voice resources, OTA, system parameters, dictionaries, and server commands.
     *   Comprehensive interaction with all backend management functions provided by `manager-api`.
 
 5.  **`manager-mobile` (Mobile Management Console - uni-app Implementation):**
     This is a cross-platform mobile management application based on uni-app v3 + Vue 3 + Vite, supporting App (Android & iOS) and WeChat Mini Program. Its main capabilities include:
-    *   Providing a convenient management interface on mobile devices, similar in functionality to manager-web but optimized for mobile platforms.
+    *   Providing a convenient management interface on mobile devices, similar in functionality to `manager-web-next` but optimized for mobile platforms.
     *   Supporting core functions such as user login, device management, and AI service configuration.
     *   Cross-platform adaptation, allowing a single codebase to run on iOS, Android, and WeChat Mini Programs.
     *   Integrating with `manager-api` through alova + `@alova/adapter-uniapp`.
@@ -74,20 +74,20 @@ The `xiaozhi-esp32-server` system adopts a **distributed, multi-component collab
     *   Providing a browser-based digital human test page for validating audio playback, audio reception, and interaction flow.
     *   Integrating a local wake word runtime with keyword detection based on Sherpa-ONNX.
     *   Bridging page state and the local runtime through an event bridge to simplify wake word debugging.
-    *   Existing as a standalone module alongside `xiaozhi-server`, `manager-web`, and `manager-api`, making independent development and deployment easier.
+    *   Existing as a standalone module alongside `xiaozhi-server`, `manager-web-next`, and `manager-api`, making independent development and deployment easier.
 
 **High-Level Interaction Flow Overview:**
 
 *   **Voice Interaction Main Line:** After the **ESP32 device** captures user voice, it transmits audio data in real-time to **`xiaozhi-server`** through **WebSocket**. After `xiaozhi-server` completes a series of AI processing (VAD, ASR, LLM interaction, TTS), it sends the synthesized voice response back to the ESP32 device for playback through WebSocket. All real-time interactions directly related to voice are completed in this link.
-*   **Management Configuration Main Line:** Administrators access the **`manager-web`** console through a browser. `manager-web` executes various management operations (such as modifying configurations, managing users or devices) by calling **RESTful HTTP interfaces** provided by **`manager-api`**. Data is passed between them in JSON format.
+*   **Management Configuration Main Line:** Administrators access the **`manager-web-next`** console through a browser. The React frontend executes configuration, user, and device operations through the **RESTful HTTP interfaces** provided by **`manager-api`**. Data is passed between them in JSON format.
 *   **Configuration Synchronization:** **`xiaozhi-server`** actively pulls its latest operation configuration from **`manager-api`** through HTTP requests when starting or when specific update mechanisms are triggered. This ensures that configuration changes made by administrators in the Web interface can be effectively applied to the operation of the core AI engine in a timely manner.
 
-This **frontend-backend separation, core service and management service separation** architectural design allows `xiaozhi-server` to focus on efficient real-time AI processing tasks, while `manager-api` and `manager-web` together provide a powerful and easy-to-use management and configuration platform. Each component has clear responsibilities, facilitating independent development, testing, deployment, and expansion.
+This **frontend-backend separation, core service and management service separation** architectural design allows `xiaozhi-server` to focus on efficient real-time AI processing tasks, while `manager-api` and `manager-web-next` provide the management and configuration platform. Each component has clear responsibilities, facilitating independent development, testing, deployment, and expansion.
 
 ```
 xiaozhi-esp32-server
   ├─ xiaozhi-server Port 8000 Python development Responsible for ESP32 communication
-  ├─ manager-web Port 8001 Node.js+Vue development Responsible for providing web interface for console
+  ├─ manager-web-next React+TypeScript+Vite web console
   ├─ manager-api Port 8002 Java development Responsible for providing console API
   ├─ manager-mobile Cross-platform mobile application uni-app+Vue3 development Responsible for providing mobile console management
   └─ digital-human Digital human test module Python+Web implementation Responsible for local test page, wake word runtime, and event bridge
@@ -147,7 +147,7 @@ The `xiaozhi-server` is the intelligent core of the system, responsible for proc
 The `manager-api` component is a backend server built using Java and the Spring Boot framework, serving as the administrative hub.
 
 *   **Purpose:**
-    *   Provide a secure RESTful API for the `manager-web` frontend.
+    *   Provide a secure RESTful API for the `manager-web-next` frontend.
     *   Act as a centralized configuration provider for `xiaozhi-server`.
     *   Manage persistent data (users, devices, AI configurations, voice timbres, OTA firmware).
 
@@ -183,37 +183,32 @@ The `manager-api` component is a backend server built using Java and the Spring 
     5.  **Database Schema Management (Liquibase):**
         *   Ensures consistent database structure across environments through versioned schema changes.
 
-### 3.3. `manager-web` (Web Control Panel - Vue.js Implementation)
+### 3.3. `manager-web-next` (Web Control Panel - React Implementation)
 
-The `manager-web` is a Single Page Application (SPA) providing the administrative user interface.
+`manager-web-next` is a React 19, strict TypeScript, and Vite single-page application that provides the complete administration console. The production `Dockerfile-web` packages it with `manager-api`; Nginx serves static assets, SPA deep links, and the `/xiaozhi` API reverse proxy.
 
-*   **Purpose:**
-    *   Offer a web-based control panel for system configuration and management.
-    *   Enable administrators to configure `xiaozhi-server`'s AI services, manage users and devices, customize voice timbres, and handle OTA updates.
+*   **Capabilities:**
+    *   Authentication, token reuse, authorization guards, and six interface languages.
+    *   Agent, device, template, address-book, voice-print, context, plugin-function, and snapshot management.
+    *   Model/provider, voice, knowledge-base, voice-cloning, and OTA management.
+    *   User, parameter, dictionary, feature, replacement-word, and server-command administration.
+    *   Compatible static resources including the device theme generator and legal pages.
 
 *   **Core Technologies:**
-    *   **Vue.js 2 & Vue CLI:** Core JavaScript framework and build tools.
-    *   **Vue Router:** For client-side routing within the SPA.
-    *   **Vuex:** For centralized state management.
-    *   **Element UI:** UI component library for a consistent look and feel.
-    *   **SCSS:** CSS preprocessor.
-    *   **HTTP Client (Flyio or Axios):** For API calls to `manager-api`.
-    *   **Workbox:** For PWA features (caching, service worker).
-    *   **Opus Libraries:** For potential in-browser audio recording/playback.
+    *   **React 19 + strict TypeScript**, with route-level lazy loading.
+    *   **Vite 8 + Tailwind CSS 4** for development, builds, and styling.
+    *   **shadcn/ui + Radix UI + Lucide** for accessible, repository-owned UI primitives.
+    *   **React Router Data Mode**, **TanStack Query**, and **Axios** for routing, server state, and API transport.
+    *   **i18next** for `zh-CN`, `zh-TW`, `en`, `de`, `pt-BR`, and `vi`.
+    *   **Vitest + Testing Library + Playwright** for unit, component, and browser tests.
 
-*   **Key Implementation Aspects:**
+*   **Development:**
+    *   Use Node 22 and pnpm 11 in `main/manager-web-next`.
+    *   `pnpm dev` starts the development server; `VITE_DEV_API_TARGET` selects the manager-api target.
+    *   `pnpm check` runs ESLint, strict type checking, Vitest, and the production build.
+    *   `pnpm api:generate` refreshes OpenAPI TypeScript types from `/xiaozhi/v3/api-docs`.
 
-    1.  **SPA Structure:** Single HTML page with dynamic view updates.
-    2.  **Component-Based Architecture:** UI built from reusable Vue components (`.vue` files in `src/views/` for pages and `src/components/` for smaller elements).
-    3.  **Client-Side Routing (`src/router/index.js`):** Maps browser URLs to view components, with route guards for authentication.
-    4.  **State Management (`src/store/index.js`):** Vuex manages global state (user info, device lists, etc.) via state, getters, mutations, and actions (often involving API calls).
-    5.  **API Communication (`src/apis/`):** Modularized API service files make asynchronous calls to `manager-api`.
-    6.  **Build Process & PWA Features:** Vue CLI (Webpack) bundles assets. Workbox enables PWA features like caching.
-    7.  **Environment Configuration (`.env` files):**
-        *   The `.env` (and `.env.development`, `.env.production`, etc.) files in the project root directory are used to define environment variables. These variables (such as `VUE_APP_API_BASE_URL` to specify the base URL of `manager-api`) can be accessed in the application code through `process.env.VUE_APP_XXX`, allowing configuration of different parameters for different build environments (development, testing, production).
-
-`manager-web` constructs a powerful, maintainable, and user-friendly management interface through the comprehensive application of these technologies, providing solid frontend support for the configuration and monitoring of the `xiaozhi-esp32-server` system.
-
+The Vue 2 source was removed only after the React production cutover and upgrade/rollback rehearsal passed. See `docs/frontend-react-migration.md` for the compatibility constraints and verification record.
 ### 3.4. `manager-mobile` (Mobile Management Console - uni-app Implementation)
 
 The `manager-mobile` component is a cross-platform mobile management application based on uni-app v3 + Vue 3 + Vite, supporting App (Android & iOS) and WeChat Mini Program. It provides system administrators with a mobile management interface, making management operations more convenient.
@@ -362,18 +357,18 @@ This flow is real-time, primarily using WebSocket for low-latency, bidirectional
     *   **Server -> ESP32:** The server may send control instructions to the device (such as "start listening", "stop listening", adjust sensitivity, send specific configuration parameters).
     *   Modules like `core/handle/abortHandle.py` (handling interrupt requests), `core/handle/reportHandle.py` (handling device reports) are responsible for parsing and responding to these control/status messages.
 
-**4.2. Management and Configuration Flow (`manager-web` <-> `manager-api` <-> `xiaozhi-server`)**
+**4.2. Management and Configuration Flow (`manager-web-next` <-> `manager-api` <-> `xiaozhi-server`)**
 
 This flow primarily relies on HTTP/HTTPS-based RESTful API for request-response interactions.
 
-*   **Administrator UI Backend Interaction (`manager-web` -> `manager-api`):**
-    *   When administrators perform operations in the `manager-web` interface (e.g., saving a configuration, adding a new user, registering an ESP32 device):
-        *   The Vue.js frontend application (`manager-web`) will initiate asynchronous HTTP requests (usually GET, POST, PUT, DELETE) to the corresponding REST API endpoints of `manager-api` through its API encapsulation module (located in `src/apis/module/`).
+*   **Administrator UI Backend Interaction (`manager-web-next` -> `manager-api`):**
+    *   When administrators perform operations in `manager-web-next` (for example, saving configuration, adding a user, or registering an ESP32 device):
+        *   The React frontend calls the corresponding REST endpoints through API modules organized by business domain.
         *   Request and response bodies typically use JSON format.
         *   The `@RestController` classes in `manager-api` receive these requests. The **Apache Shiro** framework will first perform authentication and authorization checks on the requests.
         *   After verification, the Controller distributes the request to the corresponding Service layer to handle business logic. The Service layer may interact with the MySQL database (through MyBatis-Plus) and may utilize Redis for data caching.
-        *   After processing, `manager-api` returns an HTTP response in JSON format to `manager-web`.
-        *   `manager-web` updates its Vuex state store and user interface display based on the response results.
+        *   After processing, `manager-api` returns an HTTP response in JSON format to `manager-web-next`.
+        *   `manager-web-next` updates its TanStack Query server-state cache and user interface.
 
 *   **Configuration Synchronization (`manager-api` -> `xiaozhi-server`):**
     *   The operation of `xiaozhi-server` depends on dynamic configurations obtained from `manager-api` (such as currently selected AI service providers and their API keys).
@@ -382,7 +377,7 @@ This flow primarily relies on HTTP/HTTPS-based RESTful API for request-response 
     *   After receiving the configuration, `xiaozhi-server` will update its internal state and may reinitialize relevant AI service modules to make the new configuration effective.
 
 *   **OTA Firmware Update Flow (Conceptual Description):**
-    *   Administrators upload new ESP32 firmware packages to specific endpoints of `manager-api` through the `manager-web` interface.
+    *   Administrators upload new ESP32 firmware packages to specific endpoints of `manager-api` through `manager-web-next`.
     *   `manager-api` stores the firmware files and records related metadata (version number, applicable device models, etc.).
     *   When administrators trigger OTA updates for specific devices:
         *   `manager-api` may notify `xiaozhi-server` (the specific notification mechanism may be a polling checkpoint, or `xiaozhi-server` exposes an API to receive update notifications, or more loosely coupled like message queues).
@@ -392,7 +387,7 @@ This flow primarily relies on HTTP/HTTPS-based RESTful API for request-response 
 **4.3. Main Protocol Summary:**
 
 *   **WebSocket:** Selected for the communication link between ESP32 and `xiaozhi-server` because it is very suitable for real-time, low-latency, bidirectional data stream transmission (especially audio), as well as asynchronous control message delivery.
-*   **RESTful APIs (based on HTTP/HTTPS, usually using JSON as the data exchange format):** This is the standard way for web service communication. Used for request-response interactions between `manager-web` (client) and `manager-api` (server), and also for `xiaozhi-server` (as client) to pull configuration information from `manager-api` (as server). Its stateless nature, wide library support, and easy-to-understand semantics make it an ideal choice for such interactions.
+*   **RESTful APIs (based on HTTP/HTTPS, usually using JSON as the data exchange format):** This is the standard way for web service communication. It is used between `manager-web-next` and `manager-api`, and by `xiaozhi-server` when pulling configuration from `manager-api`.
 
 This multi-protocol communication strategy ensures that different types of interaction requirements within the system can be handled efficiently and appropriately, balancing real-time performance and standardized request-response patterns.
 
@@ -418,7 +413,7 @@ The `xiaozhi-esp32-server` system provides a series of rich features aimed at su
     *   Built-in support for Home Assistant integration.
 6.  **IoT Device Control:**
     *   Designed to manage and control smart home devices and other IoT hardware through voice commands, utilizing the plugin system.
-7.  **Web-based Management Console (`manager-web` & `manager-api`):**
+7.  **Web-based Management Console (`manager-web-next` & `manager-api`):**
     *   Provides a comprehensive graphical interface for:
         *   System configuration (AI service selection, API keys, operation parameters).
         *   Role-based access control user management.
@@ -434,8 +429,8 @@ The `xiaozhi-esp32-server` system provides a series of rich features aimed at su
     *   Licensed under MIT License, encouraging transparency, collaboration, and community contribution.
 11. **Cost-Effective Solution:**
     *   Provides an "Entry Level Free Settings" path, utilizing free tiers of AI services or local models, making it easy to experiment and for personal projects.
-12. **Progressive Web Application (PWA) Features:**
-    *   The `manager-web` control panel includes Service Worker integration to enhance caching and potential offline access capabilities.
+12. **Modern Frontend Delivery:**
+    *   `manager-web-next` combines lazy routes, long-lived caching for hashed assets, no-cache HTML, and Nginx SPA fallback for fast and consistent upgrades.
 13. **Detailed API Documentation:**
     *   `manager-api` provides OpenAPI (Swagger) documentation through Knife4j for clear understanding and testing of its RESTful endpoints.
 
@@ -453,11 +448,11 @@ The project can be deployed in multiple ways, mainly including using Docker to s
 
 1.  **Docker-based Deployment:**
     *   **Simplified Installation (Only `xiaozhi-server`):** This option only deploys the core Python-based `xiaozhi-server`. It is suitable for users who mainly need voice AI processing capabilities and IoT control, without requiring the complete Web management interface and database support functions (such as OTA). In this mode, configuration is typically managed through local files (`config.yaml`), but if needed, it can still point to an existing `manager-api` instance.
-    *   **Full Module Installation (All Components):** This scheme deploys all core components: `xiaozhi-server`, Java-based `manager-api`, and Vue.js-based `manager-web`, along with required database services (MySQL and Redis). This provides a complete system experience, including a Web control panel for comprehensive configuration and management.
-    *   The project provides `Dockerfile` definitions for each service and uses `docker-compose.yml` files (e.g., `docker-compose.yml` for basic version, `docker-compose_all.yml` for full-featured version) to orchestrate and manage multi-container deployment. Additionally, a `docker-setup.sh` script may be provided to assist in automating part of the Docker environment setup work.
+    *   **Full Module Installation (All Components):** This scheme deploys `xiaozhi-server`, Java `manager-api`, React `manager-web-next`, MySQL, and Redis.
+    *   Source deployments use `main/xiaozhi-server/docker-compose.source.yml`; `source-deploy.sh` backs up MySQL, builds immutable local images, replaces only application containers, waits for health, and supports explicit rollback.
 
 2.  **Source Code Deployment:**
-    *   This method requires manual setup of the corresponding development environment for each component: Python environment for `xiaozhi-server`, Java/Maven environment for `manager-api`, Node.js/Vue CLI environment for `manager-web`.
+    *   This method requires a Python environment for `xiaozhi-server`, Java 21/Maven for `manager-api`, and Node 22/pnpm for `manager-web-next`.
     *   For full module installation, MySQL and Redis database services also need to be manually installed and configured.
     *   This approach is typically used for project development, deep customization, debugging, or in production scenarios with special environmental requirements.
 
@@ -468,7 +463,7 @@ Configuration is key to customizing system behavior, especially in selecting AI 
 1.  **`xiaozhi-server` Configuration:**
     *   **Local `config.yaml`:** A main YAML format configuration file located in the `xiaozhi-server` root directory. It defines server ports, selected AI service providers (ASR, LLM, TTS, VAD, Intent Recognition, Memory modules, etc.), their respective API keys or model paths, plugin configurations, and log levels.
     *   **Remote Configuration through `manager-api`:** `xiaozhi-server` is designed to obtain its operation configuration from `manager-api`. Settings obtained from `manager-api` typically override settings with the same name in the local `config.yaml`. This brings two major benefits:
-        *   **Centralized Management:** All configurations can be managed uniformly through the `manager-web` interface.
+        *   **Centralized Management:** All configurations can be managed uniformly through `manager-web-next`.
         *   **Dynamic Updates:** `xiaozhi-server` can refresh its configuration and reinitialize AI modules without completely restarting the service.
     *   `config/config_loader.py` and `config/manage_api_client.py` in `xiaozhi-server` are responsible for handling configuration loading, merging, and pulling logic from `manager-api`.
 
@@ -476,16 +471,15 @@ Configuration is key to customizing system behavior, especially in selecting AI 
     *   As a Spring Boot application, its configuration is mainly managed through the `application.properties` or `application.yml` file located in the `src/main/resources` directory.
     *   Key configuration items include: database connection information (MySQL URL, username, password), Redis server address and port, application service port (default 8002), Apache Shiro security-related settings, and configuration parameters for any integrated third-party services (such as Aliyun SMS).
 
-3.  **`manager-web` Configuration:**
-    *   Environment-specific settings for the Vue.js frontend application are managed through `.env` series files (e.g., `.env`, `.env.development`, `.env.production`) in the project root directory.
-    *   The most critical configuration here is usually the API base URL address of the `manager-api` backend (e.g., `VUE_APP_API_BASE_URL`), to which the frontend application will send all API requests.
+3.  **`manager-web-next` Configuration:**
+    *   Production uses the same-origin `/xiaozhi` API by default. Development can set `VITE_DEV_API_TARGET`; non-root deployments can set `VITE_PUBLIC_PATH`, and an independent API can use `VITE_API_BASE_URL`.
 
 4.  **Predefined Configuration Schemes:**
     *   The project documentation (usually README) will recommend some common configuration combinations, for example:
         *   **"Entry Level Free Settings":** This scheme aims to utilize free tier quotas of cloud AI services or completely free local models to minimize users' initial usage costs and operating expenses.
         *   **"Full Streaming Configuration":** This scheme prioritizes system response speed and interaction fluency, typically choosing AI services that support streaming processing (possibly paid).
-    *   These predefined schemes provide guidance for users to configure AI service providers in `xiaozhi-server` (through the `manager-web` interface or directly modifying `config.yaml`).
+    *   These predefined schemes provide guidance for users to configure AI service providers in `xiaozhi-server` (through `manager-web-next` or by directly modifying `config.yaml`).
 
-In the case of full module deployment, it is recommended to use the `manager-web` control panel as the main operation interface for most configuration tasks, as it provides a user-friendly way to manage various settings that are persisted by `manager-api` and ultimately used by `xiaozhi-server`.
+For full-module deployments, use `manager-web-next` as the primary interface for settings persisted by `manager-api` and consumed by `xiaozhi-server`.
 
 ---

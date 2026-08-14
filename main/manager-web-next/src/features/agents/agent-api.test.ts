@@ -34,10 +34,12 @@ describe("agent API", () => {
     requestMock.mockResolvedValueOnce(undefined);
     await updateAgent("agent/1", {
       functions: [{ paramInfo: { enabled: false, limit: 0 }, pluginId: "weather" }],
+      tagNames: ["family", "test"],
     });
     expect(requestMock).toHaveBeenCalledWith({
       data: {
         functions: [{ paramInfo: { enabled: false, limit: 0 }, pluginId: "weather" }],
+        tagNames: ["family", "test"],
       },
       method: "PUT",
       url: "/agent/agent%2F1",

@@ -298,24 +298,25 @@ src/main/java/xiaozhi/AdminApplication.java
 http://localhost:8002/xiaozhi/doc.html
 ```
 
-## 4.运行manager-web程序
+## 4.运行 manager-web-next 程序
 
-4.1 安装nodejs
+4.1 安装 Node.js 22，并启用 Corepack/pnpm 11
 
-4.2 使用Vscode编程工具加载manager-web模块
+4.2 使用 Vscode 编程工具加载 `manager-web-next` 模块
 
-终端命令进入manager-web目录下
+终端命令进入 `main/manager-web-next` 目录后执行
 
 ```
-npm install
+corepack enable
+corepack prepare pnpm@11.21.0 --activate
+pnpm install --frozen-lockfile
 ```
 然后启动
 ```
-npm run serve
+VITE_DEV_API_TARGET=http://127.0.0.1:8002 pnpm dev --port 8001
 ```
 
-请注意，如果你的manager-api的接口不在`http://localhost:8002`，请在开发时，修改
-`main/manager-web/.env.development`中的路径
+如果 manager-api 不在 `http://127.0.0.1:8002`，请把 `VITE_DEV_API_TARGET` 改为实际地址；也可以把该变量写入 `main/manager-web-next/.env.local`。
 
 运行成功后，你需要使用浏览器，打开`智控台`，链接：http://127.0.0.1:8001 ，注册第一个用户。第一个用户即是超级管理员，以后的用户都是普通用户。普通用户只能绑定设备和配置智能体;超级管理员可以进行模型管理、用户管理、参数配置等功能。
 

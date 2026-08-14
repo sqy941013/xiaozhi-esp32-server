@@ -186,9 +186,10 @@ rollback() {
 
   backup_database
   local replaced="${current_tag}"
-  deploy_tag "${previous_tag}"
-  write_state "${previous_tag}" "${replaced}"
-  echo "Rollback complete: ${previous_tag}"
+  local target="${previous_tag}"
+  deploy_tag "${target}"
+  write_state "${target}" "${replaced}"
+  echo "Rollback complete: ${target}"
 }
 
 status() {
@@ -210,24 +211,30 @@ Commands:
 EOF
 }
 
-case "${1:-}" in
-  upgrade)
-    upgrade "${2:-}"
-    ;;
-  rollback)
-    rollback
-    ;;
-  backup)
-    backup_database
-    ;;
-  status)
-    status
-    ;;
-  config)
-    compose_for_tag "${current_tag}" config --quiet
-    ;;
-  *)
-    usage
-    [[ -z "${1:-}" ]] || exit 2
-    ;;
-esac
+main() {
+  case "${1:-}" in
+    upgrade)
+      upgrade "${2:-}"
+      ;;
+    rollback)
+      rollback
+      ;;
+    backup)
+      backup_database
+      ;;
+    status)
+      status
+      ;;
+    config)
+      compose_for_tag "${current_tag}" config --quiet
+      ;;
+    *)
+      usage
+      [[ -z "${1:-}" ]] || return 2
+      ;;
+  esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

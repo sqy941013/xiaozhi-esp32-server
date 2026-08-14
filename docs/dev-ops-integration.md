@@ -11,7 +11,7 @@
 - 你已经跑通了整个流程
 - 你喜欢跟进最新功能，但是觉得每次手动部署有点麻烦，期待有一个自动更新的方法
 
-第二个条件必须满足，因为本教程所涉及的某些文件，JDK、Node.js环境、Conda环境等，是需要你跑通整个流程才有的，如果你没有跑通，当我讲到某个文件的时候，你可能就不知道什么意思。
+第二个条件必须满足，因为本教程所涉及的某些文件，JDK 21、Node.js 22、pnpm 11、Conda 环境等，是需要你跑通整个流程才有的，如果你没有跑通，当我讲到某个文件的时候，你可能就不知道什么意思。
 
 # 教程效果
 - 解决国内不能拉取最新项目源码问题
@@ -51,7 +51,7 @@ cp 你原来的model.pt完整路径 /home/system/xiaozhi/xiaozhi-esp32-server/ma
 
 # 第四步 建立三个自动编译文件
 
-## 4.1 自动编译mananger-web模块
+## 4.1 自动编译 manager-web-next 模块
 在`/home/system/xiaozhi/`目录下，创建名字为`update_8001.sh`的文件，内容如下
 
 ```
@@ -61,11 +61,13 @@ git reset --hard
 git pull origin main
 
 
-cd /home/system/xiaozhi/xiaozhi-esp32-server/main/manager-web
-npm install
-npm run build
+cd /home/system/xiaozhi/xiaozhi-esp32-server/main/manager-web-next
+corepack enable
+corepack prepare pnpm@11.21.0 --activate
+pnpm install --frozen-lockfile
+pnpm build
 rm -rf /home/system/xiaozhi/manager-web
-mv /home/system/xiaozhi/xiaozhi-esp32-server/main/manager-web/dist /home/system/xiaozhi/manager-web
+mv /home/system/xiaozhi/xiaozhi-esp32-server/main/manager-web-next/dist /home/system/xiaozhi/manager-web
 ```
 
 保存好后执行赋权命令
