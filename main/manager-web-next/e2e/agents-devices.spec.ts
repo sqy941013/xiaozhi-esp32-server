@@ -121,7 +121,7 @@ async function mockAgentSelectors(page: Page) {
         ]
       : [{ id: `${kind}_1`, modelName: `${kind} model` }]);
   });
-  await page.route("**/xiaozhi/models/TTS_1/voices**", (route) => fulfill(route, [
+  await page.route("**/xiaozhi/models/*/voices**", (route) => fulfill(route, [
     { id: "voice-1", isClone: false, languages: "中文,English", name: "晓晓" },
   ]));
   await page.route("**/xiaozhi/correct-word/file/select", (route) => fulfill(route, []));

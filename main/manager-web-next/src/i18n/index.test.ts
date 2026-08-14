@@ -50,4 +50,17 @@ describe("locale compatibility", () => {
       expect(mediaCenter.firmwareDialog.invalidFileSize).toBeTruthy();
     }
   });
+
+  it("provides every administration workflow in every locale", () => {
+    for (const resource of Object.values(resources)) {
+      const adminCenter = resource.translation.adminCenter;
+      expect(adminCenter.user.resetPassword).toBeTruthy();
+      expect(adminCenter.paramManagement.pageTitle).toBeTruthy();
+      expect(adminCenter.dictManagement.pageTitle).toBeTruthy();
+      expect(adminCenter.replacementDialog.invalidPipeCount).toBeTruthy();
+      expect(adminCenter.serverSideManager.restartServer).toBeTruthy();
+      expect(adminCenter.featureManagement.save).toBeTruthy();
+      expect(adminCenter.feature.addressBook.name).toBeTruthy();
+    }
+  });
 });
