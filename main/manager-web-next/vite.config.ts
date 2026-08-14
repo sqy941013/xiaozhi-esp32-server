@@ -19,6 +19,20 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(projectRoot, "src"),
       },
     },
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: "vendor",
+                test: /node_modules[\\/]/,
+              },
+            ],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       proxy: {
