@@ -195,6 +195,8 @@ main/manager-web-next/dist/
 main/manager-web-next/coverage/
 main/manager-web-next/.vite/
 main/manager-web-next/.pnpm-store/
+!main/manager-web-next/src/lib/
+!main/manager-web-next/src/lib/**
 
 # Do not ignore env and json files inside manager-mobile
 !main/manager-mobile/**/env/
