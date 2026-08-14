@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   AUTH_EXPIRED_EVENT,
+  apiResourceUrl,
   toAcceptLanguage,
   unwrapEnvelope,
 } from "@/api/client";
@@ -35,5 +36,10 @@ describe("API envelope handling", () => {
     expect(toAcceptLanguage("zh_CN")).toBe("zh-CN");
     expect(toAcceptLanguage("en")).toBe("en-US");
     expect(toAcceptLanguage("pt-BR")).toBe("pt-BR");
+  });
+
+  it("builds same-origin API resource URLs without duplicate separators", () => {
+    expect(apiResourceUrl("agent/play/token")).toBe("/xiaozhi/agent/play/token");
+    expect(apiResourceUrl("/agent/play/token")).toBe("/xiaozhi/agent/play/token");
   });
 });

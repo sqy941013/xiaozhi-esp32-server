@@ -1,9 +1,10 @@
 import { modelCenterResources } from "@/i18n/model-center-resources";
+import { legacyAgentResources } from "@/i18n/legacy-agent-resources.generated";
 
 const zhCN = {
   app: { name: "小智管理控制台", subtitle: "新一代管理前端" },
   language: { label: "界面语言" },
-  common: { loading: "正在加载…", retry: "重试", close: "关闭", done: "完成", cancel: "取消", save: "保存" },
+  common: { loading: "正在加载…", retry: "重试", close: "关闭", done: "完成", cancel: "取消", save: "保存", noData: "暂无数据", next: "下一页", previous: "上一页", pageSize: "每页条数", play: "播放" },
   auth: {
     heroBadge: "安全、清晰、面向全模块管理",
     heroTitle: "让每一台小智设备都更聪明、更贴近你",
@@ -89,6 +90,8 @@ const zhCN = {
     sessionVerified: "登录态已验证", allRoutesProtected: "全部业务路由默认受保护",
     availableModules: "可访问模块", locales: "界面语言", admin: "超级管理员", member: "普通用户",
     currentRole: "当前角色", moduleAccess: "模块入口", moduleAccessDescription: "入口会根据角色和服务端功能开关自动显示。",
+    noAgents: "暂无智能体，请先添加一个智能体。",
+    addAgentFailed: "添加智能体失败。",
   },
   module: { phase: "迁移阶段 {{phase}}", placeholderDescription: "该业务模块已经纳入新路由与权限体系，完整交互将在对应迁移阶段接入并通过验收。", vueStillAvailable: "切换前，生产业务仍由现有 Vue 控制台提供" },
   foundation: {
@@ -104,13 +107,14 @@ const zhCN = {
     },
   },
   modelCenter: modelCenterResources.zhCN,
+  agentCenter: legacyAgentResources.zhCN,
   error: { title: "页面加载失败", unexpected: "出现了未预期的错误。", backHome: "返回首页" },
 };
 
 const zhTW = {
   app: { name: "小智管理控制台", subtitle: "新一代管理前端" },
   language: { label: "介面語言" },
-  common: { loading: "載入中…", retry: "重試", close: "關閉", done: "完成", cancel: "取消", save: "儲存" },
+  common: { loading: "載入中…", retry: "重試", close: "關閉", done: "完成", cancel: "取消", save: "儲存", noData: "暫無資料", next: "下一頁", previous: "上一頁", pageSize: "每頁筆數", play: "播放" },
   auth: {
     heroBadge: "安全、清晰、面向全模組管理", heroTitle: "讓每一台小智裝置都更聰明、更貼近你",
     heroDescription: "在統一控制台中管理智能體、裝置、模型、知識與系統能力。",
@@ -141,6 +145,8 @@ const zhTW = {
     badge: "React 管理工作區", welcome: "你好，{{name}}", user: "使用者", description: "認證、權限、公開設定與完整路由已接入新前端。業務模組將逐階段遷移並驗證。",
     sessionVerified: "登入狀態已驗證", allRoutesProtected: "所有業務路由預設受保護", availableModules: "可存取模組", locales: "介面語言", admin: "超級管理員", member: "一般使用者",
     currentRole: "目前角色", moduleAccess: "模組入口", moduleAccessDescription: "入口會依角色與伺服器功能開關自動顯示。",
+    noAgents: "暫無智能體，請先新增一個智能體。",
+    addAgentFailed: "新增智能體失敗。",
   },
   module: { phase: "遷移階段 {{phase}}", placeholderDescription: "此業務模組已納入新路由與權限體系，完整互動將於對應階段接入並驗收。", vueStillAvailable: "切換前，正式業務仍由現有 Vue 控制台提供" },
   foundation: {
@@ -156,13 +162,14 @@ const zhTW = {
     },
   },
   modelCenter: modelCenterResources.zhTW,
+  agentCenter: legacyAgentResources.zhTW,
   error: { title: "頁面載入失敗", unexpected: "發生未預期的錯誤。", backHome: "返回首頁" },
 };
 
 const en = {
   app: { name: "Xiaozhi Console", subtitle: "Next-generation admin frontend" },
   language: { label: "Interface language" },
-  common: { loading: "Loading…", retry: "Retry", close: "Close", done: "Done", cancel: "Cancel", save: "Save" },
+  common: { loading: "Loading…", retry: "Retry", close: "Close", done: "Done", cancel: "Cancel", save: "Save", noData: "No data", next: "Next page", previous: "Previous page", pageSize: "Rows per page", play: "Play" },
   auth: {
     heroBadge: "Secure, clear, full-stack administration", heroTitle: "Make every Xiaozhi device smarter and more personal",
     heroDescription: "Manage agents, devices, models, knowledge, and system capabilities from one console.",
@@ -193,6 +200,8 @@ const en = {
     badge: "React admin workspace", welcome: "Hello, {{name}}", user: "user", description: "Authentication, permissions, public settings, and every route are connected to the new frontend. Business modules will migrate and be validated in stages.",
     sessionVerified: "Session verified", allRoutesProtected: "Every business route is protected by default", availableModules: "Available modules", locales: "Interface languages", admin: "Super admin", member: "Member",
     currentRole: "Current role", moduleAccess: "Module access", moduleAccessDescription: "Entries appear automatically based on your role and server feature flags.",
+    noAgents: "No agents yet. Add an agent to get started.",
+    addAgentFailed: "Unable to add the agent.",
   },
   module: { phase: "Migration phase {{phase}}", placeholderDescription: "This module is now covered by the new routing and permission system. Its full workflow will be connected and accepted in the corresponding migration phase.", vueStillAvailable: "The existing Vue console continues serving production workflows until cutover" },
   foundation: {
@@ -208,6 +217,7 @@ const en = {
     },
   },
   modelCenter: modelCenterResources.en,
+  agentCenter: legacyAgentResources.en,
   error: { title: "Unable to load this page", unexpected: "An unexpected error occurred.", backHome: "Back home" },
 };
 
@@ -215,7 +225,7 @@ const de = {
   ...en,
   app: { name: "Xiaozhi-Konsole", subtitle: "Neue Verwaltungsoberfläche" },
   language: { label: "Oberflächensprache" },
-  common: { loading: "Wird geladen…", retry: "Erneut versuchen", close: "Schließen", done: "Fertig", cancel: "Abbrechen", save: "Speichern" },
+  common: { loading: "Wird geladen…", retry: "Erneut versuchen", close: "Schließen", done: "Fertig", cancel: "Abbrechen", save: "Speichern", noData: "Keine Daten", next: "Nächste Seite", previous: "Vorherige Seite", pageSize: "Zeilen pro Seite", play: "Abspielen" },
   auth: {
     ...en.auth,
     heroBadge: "Sichere und übersichtliche Komplettverwaltung", heroTitle: "Machen Sie jedes Xiaozhi-Gerät intelligenter und persönlicher",
@@ -236,7 +246,7 @@ const de = {
   },
   shell: { primaryNavigation: "Hauptnavigation", openNavigation: "Navigation öffnen", workspaceSubtitle: "Sicherer Arbeitsbereich für alle Module" },
   nav: { ...en.nav, groups: { workspace: "Smarter Arbeitsbereich", ai: "KI-Funktionen", admin: "Systemverwaltung" }, home: "Arbeitsbereich", agents: "Agenten", devices: "Geräte", voicePrint: "Stimmerkennung", voiceClone: "Stimmklonen", voiceResources: "Stimmressourcen", models: "Modelle", knowledge: "Wissensbasis", addressBook: "Adressbuch", parameters: "Parameter", users: "Benutzer", dictionary: "Wörterbuch", providers: "Anbieter", agentTemplates: "Agentenvorlagen", templateQuickConfig: "Vorlagen-Schnellkonfiguration", replacementWords: "Ersatzwörter", server: "Server", features: "Funktionen", foundation: "Frontend-Grundlage" },
-  dashboard: { ...en.dashboard, badge: "React-Verwaltungsbereich", welcome: "Hallo, {{name}}", user: "Benutzer", description: "Authentifizierung, Berechtigungen, öffentliche Einstellungen und alle Routen sind mit dem neuen Frontend verbunden. Fachmodule werden schrittweise migriert und geprüft.", sessionVerified: "Sitzung bestätigt", allRoutesProtected: "Alle Fachrouten sind standardmäßig geschützt", availableModules: "Verfügbare Module", locales: "Oberflächensprachen", admin: "Superadministrator", member: "Mitglied", currentRole: "Aktuelle Rolle", moduleAccess: "Modulzugriff", moduleAccessDescription: "Einträge werden nach Rolle und Server-Funktionsschaltern angezeigt." },
+  dashboard: { ...en.dashboard, badge: "React-Verwaltungsbereich", welcome: "Hallo, {{name}}", user: "Benutzer", description: "Authentifizierung, Berechtigungen, öffentliche Einstellungen und alle Routen sind mit dem neuen Frontend verbunden. Fachmodule werden schrittweise migriert und geprüft.", sessionVerified: "Sitzung bestätigt", allRoutesProtected: "Alle Fachrouten sind standardmäßig geschützt", availableModules: "Verfügbare Module", locales: "Oberflächensprachen", admin: "Superadministrator", member: "Mitglied", currentRole: "Aktuelle Rolle", moduleAccess: "Modulzugriff", moduleAccessDescription: "Einträge werden nach Rolle und Server-Funktionsschaltern angezeigt.", noAgents: "Noch keine Agenten. Fügen Sie zuerst einen Agenten hinzu.", addAgentFailed: "Der Agent konnte nicht hinzugefügt werden." },
   module: { phase: "Migrationsphase {{phase}}", placeholderDescription: "Dieses Modul ist bereits in das neue Routing- und Berechtigungssystem eingebunden. Der vollständige Ablauf folgt in der jeweiligen Migrationsphase.", vueStillAvailable: "Bis zur Umstellung bleiben produktive Abläufe in der Vue-Konsole verfügbar" },
   foundation: {
     ...en.foundation,
@@ -251,6 +261,7 @@ const de = {
     },
   },
   modelCenter: modelCenterResources.de,
+  agentCenter: legacyAgentResources.de,
   error: { title: "Seite konnte nicht geladen werden", unexpected: "Ein unerwarteter Fehler ist aufgetreten.", backHome: "Zur Startseite" },
 };
 
@@ -258,7 +269,7 @@ const ptBR = {
   ...en,
   app: { name: "Console Xiaozhi", subtitle: "Nova interface administrativa" },
   language: { label: "Idioma da interface" },
-  common: { loading: "Carregando…", retry: "Tentar novamente", close: "Fechar", done: "Concluído", cancel: "Cancelar", save: "Salvar" },
+  common: { loading: "Carregando…", retry: "Tentar novamente", close: "Fechar", done: "Concluído", cancel: "Cancelar", save: "Salvar", noData: "Nenhum dado", next: "Próxima página", previous: "Página anterior", pageSize: "Linhas por página", play: "Reproduzir" },
   auth: {
     ...en.auth,
     heroBadge: "Administração completa, segura e clara", heroTitle: "Torne cada dispositivo Xiaozhi mais inteligente e pessoal", heroDescription: "Gerencie agentes, dispositivos, modelos, conhecimento e recursos do sistema em um só console.",
@@ -275,7 +286,7 @@ const ptBR = {
   },
   shell: { primaryNavigation: "Navegação principal", openNavigation: "Abrir navegação", workspaceSubtitle: "Área segura com todos os módulos" },
   nav: { ...en.nav, groups: { workspace: "Área inteligente", ai: "Recursos de IA", admin: "Administração do sistema" }, home: "Área de trabalho", agents: "Agentes", devices: "Dispositivos", voicePrint: "Impressões de voz", voiceClone: "Clonagem de voz", voiceResources: "Recursos de voz", models: "Modelos", knowledge: "Base de conhecimento", addressBook: "Contatos", parameters: "Parâmetros", users: "Usuários", dictionary: "Dicionário", providers: "Provedores", agentTemplates: "Modelos de agente", templateQuickConfig: "Configuração rápida", replacementWords: "Palavras substitutas", server: "Servidor", features: "Recursos", foundation: "Base do frontend" },
-  dashboard: { ...en.dashboard, badge: "Área administrativa React", welcome: "Olá, {{name}}", user: "usuário", description: "Autenticação, permissões, configurações públicas e todas as rotas já estão ligadas ao novo frontend. Os módulos serão migrados e validados em etapas.", sessionVerified: "Sessão verificada", allRoutesProtected: "Todas as rotas de negócio são protegidas", availableModules: "Módulos disponíveis", locales: "Idiomas da interface", admin: "Superadministrador", member: "Membro", currentRole: "Função atual", moduleAccess: "Acesso aos módulos", moduleAccessDescription: "As opções aparecem conforme sua função e os recursos do servidor." },
+  dashboard: { ...en.dashboard, badge: "Área administrativa React", welcome: "Olá, {{name}}", user: "usuário", description: "Autenticação, permissões, configurações públicas e todas as rotas já estão ligadas ao novo frontend. Os módulos serão migrados e validados em etapas.", sessionVerified: "Sessão verificada", allRoutesProtected: "Todas as rotas de negócio são protegidas", availableModules: "Módulos disponíveis", locales: "Idiomas da interface", admin: "Superadministrador", member: "Membro", currentRole: "Função atual", moduleAccess: "Acesso aos módulos", moduleAccessDescription: "As opções aparecem conforme sua função e os recursos do servidor.", noAgents: "Ainda não há agentes. Adicione um agente para começar.", addAgentFailed: "Não foi possível adicionar o agente." },
   module: { phase: "Fase de migração {{phase}}", placeholderDescription: "Este módulo já usa o novo roteamento e as novas permissões. O fluxo completo será conectado e aprovado na fase correspondente.", vueStillAvailable: "O console Vue continua atendendo os fluxos de produção até a troca" },
   foundation: {
     ...en.foundation,
@@ -290,6 +301,7 @@ const ptBR = {
     },
   },
   modelCenter: modelCenterResources.ptBR,
+  agentCenter: legacyAgentResources.ptBR,
   error: { title: "Não foi possível carregar a página", unexpected: "Ocorreu um erro inesperado.", backHome: "Voltar ao início" },
 };
 
@@ -297,7 +309,7 @@ const vi = {
   ...en,
   app: { name: "Bảng điều khiển Xiaozhi", subtitle: "Giao diện quản trị thế hệ mới" },
   language: { label: "Ngôn ngữ giao diện" },
-  common: { loading: "Đang tải…", retry: "Thử lại", close: "Đóng", done: "Hoàn tất", cancel: "Hủy", save: "Lưu" },
+  common: { loading: "Đang tải…", retry: "Thử lại", close: "Đóng", done: "Hoàn tất", cancel: "Hủy", save: "Lưu", noData: "Chưa có dữ liệu", next: "Trang sau", previous: "Trang trước", pageSize: "Số hàng mỗi trang", play: "Phát" },
   auth: {
     ...en.auth,
     heroBadge: "Quản trị toàn diện, an toàn và rõ ràng", heroTitle: "Giúp mọi thiết bị Xiaozhi thông minh và gần gũi hơn", heroDescription: "Quản lý tác nhân, thiết bị, mô hình, tri thức và chức năng hệ thống trong một bảng điều khiển.",
@@ -314,7 +326,7 @@ const vi = {
   },
   shell: { primaryNavigation: "Điều hướng chính", openNavigation: "Mở điều hướng", workspaceSubtitle: "Không gian làm việc an toàn cho mọi mô-đun" },
   nav: { ...en.nav, groups: { workspace: "Không gian thông minh", ai: "Khả năng AI", admin: "Quản trị hệ thống" }, home: "Không gian làm việc", agents: "Tác nhân", devices: "Thiết bị", voicePrint: "Nhận dạng giọng nói", voiceClone: "Nhân bản giọng nói", voiceResources: "Tài nguyên giọng nói", models: "Mô hình", knowledge: "Cơ sở tri thức", addressBook: "Danh bạ", parameters: "Tham số", users: "Người dùng", dictionary: "Từ điển", providers: "Nhà cung cấp", agentTemplates: "Mẫu tác nhân", templateQuickConfig: "Cấu hình mẫu nhanh", replacementWords: "Từ thay thế", server: "Máy chủ", features: "Tính năng", foundation: "Nền tảng frontend" },
-  dashboard: { ...en.dashboard, badge: "Không gian quản trị React", welcome: "Xin chào, {{name}}", user: "người dùng", description: "Xác thực, quyền, cấu hình công khai và toàn bộ tuyến đã kết nối với frontend mới. Các mô-đun nghiệp vụ sẽ được di chuyển và kiểm thử theo từng giai đoạn.", sessionVerified: "Phiên đã được xác minh", allRoutesProtected: "Mọi tuyến nghiệp vụ đều được bảo vệ", availableModules: "Mô-đun khả dụng", locales: "Ngôn ngữ giao diện", admin: "Quản trị viên cấp cao", member: "Thành viên", currentRole: "Vai trò hiện tại", moduleAccess: "Truy cập mô-đun", moduleAccessDescription: "Mục truy cập hiển thị theo vai trò và cờ tính năng của máy chủ." },
+  dashboard: { ...en.dashboard, badge: "Không gian quản trị React", welcome: "Xin chào, {{name}}", user: "người dùng", description: "Xác thực, quyền, cấu hình công khai và toàn bộ tuyến đã kết nối với frontend mới. Các mô-đun nghiệp vụ sẽ được di chuyển và kiểm thử theo từng giai đoạn.", sessionVerified: "Phiên đã được xác minh", allRoutesProtected: "Mọi tuyến nghiệp vụ đều được bảo vệ", availableModules: "Mô-đun khả dụng", locales: "Ngôn ngữ giao diện", admin: "Quản trị viên cấp cao", member: "Thành viên", currentRole: "Vai trò hiện tại", moduleAccess: "Truy cập mô-đun", moduleAccessDescription: "Mục truy cập hiển thị theo vai trò và cờ tính năng của máy chủ.", noAgents: "Chưa có tác nhân. Hãy thêm một tác nhân để bắt đầu.", addAgentFailed: "Không thể thêm tác nhân." },
   module: { phase: "Giai đoạn di chuyển {{phase}}", placeholderDescription: "Mô-đun này đã nằm trong hệ thống định tuyến và phân quyền mới. Luồng đầy đủ sẽ được kết nối và nghiệm thu ở giai đoạn tương ứng.", vueStillAvailable: "Bảng điều khiển Vue vẫn phục vụ nghiệp vụ thực tế cho đến khi chuyển đổi" },
   foundation: {
     ...en.foundation,
@@ -329,6 +341,7 @@ const vi = {
     },
   },
   modelCenter: modelCenterResources.vi,
+  agentCenter: legacyAgentResources.vi,
   error: { title: "Không thể tải trang", unexpected: "Đã xảy ra lỗi không mong muốn.", backHome: "Về trang chủ" },
 };
 

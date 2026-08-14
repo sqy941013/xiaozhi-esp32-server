@@ -4,7 +4,29 @@ import { useTranslation } from "react-i18next";
 import type { ModuleRoute } from "@/app/module-routes";
 import { FoundationPage } from "@/features/foundation/foundation-page";
 import { ModulePlaceholder } from "@/features/foundation/module-placeholder";
-import { WorkspacePage } from "@/features/foundation/workspace-page";
+
+const AgentsPage = lazy(async () => ({
+  default: (await import("@/features/agents/agents-page")).AgentsPage,
+}));
+const AgentConfigPage = lazy(async () => ({
+  default: (await import("@/features/agents/agent-config-page")).AgentConfigPage,
+}));
+const VoicePrintPage = lazy(async () => ({
+  default: (await import("@/features/agents/voice-print-page")).VoicePrintPage,
+}));
+const AgentTemplatePage = lazy(async () => ({
+  default: (await import("@/features/agents/agent-template-page")).AgentTemplatePage,
+}));
+const TemplateQuickConfigPage = lazy(async () => ({
+  default: (await import("@/features/agents/template-quick-config-page")).TemplateQuickConfigPage,
+}));
+const DeviceManagementPage = lazy(async () => ({
+  default: (await import("@/features/devices/device-management-page"))
+    .DeviceManagementPage,
+}));
+const AddressBookPage = lazy(async () => ({
+  default: (await import("@/features/devices/address-book-page")).AddressBookPage,
+}));
 
 const ModelConfigPage = lazy(async () => ({
   default: (await import("@/features/models/model-config-page")).ModelConfigPage,
@@ -28,7 +50,13 @@ function ModuleLoading() {
 
 export function ModuleContent({ route }: { route: ModuleRoute }) {
   let content: React.ReactNode;
-  if (route.path === "/home") content = <WorkspacePage />;
+  if (route.path === "/home") content = <AgentsPage />;
+  else if (route.path === "/role-config") content = <AgentConfigPage />;
+  else if (route.path === "/device-management") content = <DeviceManagementPage />;
+  else if (route.path === "/address-book-management") content = <AddressBookPage />;
+  else if (route.path === "/voice-print") content = <VoicePrintPage />;
+  else if (route.path === "/agent-template-management") content = <AgentTemplatePage />;
+  else if (route.path === "/template-quick-config") content = <TemplateQuickConfigPage />;
   else if (route.path === "/foundation") content = <FoundationPage />;
   else if (route.path === "/model-config") content = <ModelConfigPage />;
   else if (route.path === "/provider-management") {

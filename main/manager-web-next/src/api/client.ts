@@ -103,6 +103,12 @@ export function createApiClient(): AxiosInstance {
 
 export const apiClient = createApiClient();
 
+export function apiResourceUrl(path: string): string {
+  const base = (import.meta.env.VITE_API_BASE_URL || "/xiaozhi").replace(/\/$/, "");
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${suffix}`;
+}
+
 function apiErrorFromAxios(error: AxiosError<ApiEnvelope<unknown>>): ApiError {
   const response = error.response;
   const envelope = response?.data;

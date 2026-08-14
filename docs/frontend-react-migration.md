@@ -38,9 +38,9 @@ Docker 构建默认通过 `https://registry.npmmirror.com` 下载 pnpm 依赖，
 | --- | --- | --- |
 | 1. 工程基础 | React/Vite/Tailwind/shadcn 基础、OpenAPI 类型、六语言、Docker、CI | 已合并（PR #2） |
 | 2. 应用骨架 | 登录/注册/找回密码、令牌续用、权限守卫、菜单、整体布局、API 客户端 | 已合并（PR #3） |
-| 3. 模型中心 | 模型配置、供应器管理、动态字段、TTS 音色与敏感配置 | 已完成实现和本机全量验收，等待阶段 PR 合并 |
-| 4. 智能体与设备 | 首页、角色配置、模板、设备绑定、通讯录 | 快照、绑定、音频交互和高风险确认通过 |
-| 5. 知识与媒体 | 知识库、声纹、语音资源、声音克隆、OTA | 上传、下载、播放、进度和大文件路径通过 |
+| 3. 模型中心 | 模型配置、供应器管理、动态字段、TTS 音色与敏感配置 | 已合并（PR #4） |
+| 4. 智能体与设备 | 首页、角色配置、模板、设备绑定、通讯录、声纹 | 已完成（PR #5） |
+| 5. 知识与媒体 | 知识库、语音资源、声音克隆、OTA | 上传、下载、播放、进度和大文件路径通过 |
 | 6. 系统管理 | 用户、参数、字典、功能、替换词、服务端管理 | 超级管理员权限、审计和批量操作通过 |
 | 7. 切换与收尾 | Compose 改用本地 React 镜像、全路由回归、升级/回滚演练 | 全量验收后切流，再单独移除 Vue 依赖 |
 
@@ -70,12 +70,13 @@ main/manager-web-next/
 | 认证 | `/`、`/login` | 高 | 已迁移并合并 |
 | 认证 | `/register`、`/retrieve-password` | 中 | 已迁移并合并 |
 | 应用骨架 | 全部业务路由、权限导航、响应式布局 | 高 | 已迁移并合并 |
-| 智能体 | `/home`、`/role-config` | 极高 | 路由与权限完成，业务待阶段 4 |
-| 智能体 | `/agent-template-management`、`/template-quick-config` | 高 | 待迁移 |
-| 设备 | `/device-management`、`/address-book-management` | 高 | 路由与权限完成，业务待阶段 4 |
-| 模型 | `/model-config`、`/provider-management` | 高 | 阶段 3 已实现并通过本机验收，等待合并 |
+| 智能体 | `/home`、`/role-config` | 极高 | 阶段 4 已迁移并验收 |
+| 智能体 | `/agent-template-management`、`/template-quick-config` | 高 | 阶段 4 已迁移并验收 |
+| 设备 | `/device-management`、`/address-book-management` | 高 | 阶段 4 已迁移并验收 |
+| 模型 | `/model-config`、`/provider-management` | 高 | 阶段 3 已迁移并合并 |
 | 知识库 | `/knowledge-base-management` | 高 | 路由与权限完成，业务待阶段 5 |
-| 语音 | `/voice-print`、`/voice-resource-management` | 高 | 路由与权限完成，业务待阶段 5 |
+| 语音 | `/voice-print` | 高 | 阶段 4 已迁移并验收 |
+| 语音 | `/voice-resource-management` | 高 | 路由与权限完成，业务待阶段 5 |
 | 语音 | `/voice-clone-management` | 高 | 路由与权限完成，业务待阶段 5 |
 | OTA | `/ota-management` | 高 | 路由与权限完成，业务待阶段 5 |
 | 系统 | `/user-management`、`/params-management` | 中 | 路由与权限完成，业务待阶段 6 |
@@ -106,6 +107,18 @@ main/manager-web-next/
 - 文档链接只允许 HTTP/HTTPS，试听地址只额外允许同源绝对路径，拒绝危险协议和协议相对 URL。
 - 六种语言的旧模型文案由确定性脚本生成，再叠加 React 新交互文案；测试检查每个语言包都包含完整工作流入口。
 - 本机验收结果：ESLint、严格类型、26 项 Vitest、6 项 JDK 21 后端测试、11 项 Playwright、生产构建、Docker 健康检查和生产依赖审计全部通过。
+
+## 阶段 4 智能体与设备约束
+
+- 工作台支持按智能体名称或设备 MAC 查询、新建、配置、查看聊天记录和删除；删除必须手工输入完整智能体名称，禁止粘贴绕过确认。
+- 角色配置覆盖 VAD、ASR、LLM、SLM、VLLM、Intent、Memory、TTS、音色、标签、替换词、插件函数和上下文源；`0`、`false` 等有效配置不会在保存时丢失。
+- 选择无记忆模型时同步关闭聊天记录上报并清空摘要；快照恢复必须携带服务端返回的 `currentStateToken`，展示字段差异并经过二次确认。
+- 设备支持验证码绑定、基于 `FIRMWARE_TYPE` 字典的手动添加、备注修改、自动升级开关和单个/批量解绑；连字符 MAC 会规范化为大写冒号格式。
+- 通讯录聚合用户名下全部智能体设备，按主叫设备维护别名与呼叫权限，并对后端返回的 MAC 大小写差异进行归一化。
+- 声纹使用真实的近期用户语音记录创建，可试听、编辑和删除；聊天记录支持会话分页、音频播放和带令牌的当前/历史下载。
+- 功能开关路由在公共配置尚未加载时保持加载态，避免直接访问通讯录或声纹深链被错误重定向。
+- 六种语言的智能体、设备、模板、快照、通讯录和声纹文案由确定性脚本从 Vue 语言包生成，并叠加 React 通用交互文案。
+- 本机验收结果：ESLint 零警告、严格类型检查、42 项 Vitest、16 项 Playwright、生产构建、Docker 镜像健康检查、SPA 深链检查和生产依赖审计全部通过。
 
 ## 已确认的基线
 
