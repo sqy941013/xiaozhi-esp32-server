@@ -188,7 +188,7 @@ class WebChatServiceImplTest {
     }
 
     @Test
-    void deviceLockRejectsOverlapAndIsReleasedOnlyByItsOwner() {
+    void deviceLockRejectsOverlapAndIsReleasedWhenItsOwnerStartsFinalizing() {
         WebChatSessionCreateVO first = service.createSession(
                 "device-1", 42L, "https://console.example.test");
         service.redeemTicket(first.getTicket(), "https://console.example.test");
@@ -201,12 +201,18 @@ class WebChatServiceImplTest {
                 "device-1", overlapping.getSessionId(), 42L).getStatus());
 
         service.updateSession(first.getSessionId(), update("FINISHING", "PENDING"));
-        service.updateSession(first.getSessionId(), update("CLOSED", "NO_CHANGE"));
-
         WebChatSessionCreateVO next = service.createSession(
                 "device-1", 42L, "https://console.example.test");
         assertEquals("device-1", service.redeemTicket(
                 next.getTicket(), "https://console.example.test").getDeviceId());
+
+        // A late terminal update from the old session must not clear the new
+        // session's lock.
+        service.updateSession(first.getSessionId(), update("CLOSED", "NO_CHANGE"));
+        WebChatSessionCreateVO third = service.createSession(
+                "device-1", 42L, "https://console.example.test");
+        assertThrows(RenException.class, () -> service.redeemTicket(
+                third.getTicket(), "https://console.example.test"));
     }
 
     private WebChatSessionUpdateDTO update(String status, String memoryStatus) {

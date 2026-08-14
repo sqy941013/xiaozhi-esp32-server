@@ -40,6 +40,8 @@ interface MemoryReceipt {
   status: string;
 }
 
+const STARTUP_RETRY_DELAYS_MS = [500, 1_000, 2_000] as const;
+
 function frameString(frame: Record<string, unknown>, key: string): string | undefined {
   return typeof frame[key] === "string" ? frame[key] : undefined;
 }
@@ -67,6 +69,8 @@ export function useDeviceWebChat(deviceId: string) {
   const pendingRun = useRef<PendingRun | null>(null);
   const phaseRef = useRef<WebChatPhase>("connecting");
   const socketRef = useRef<WebSocket | null>(null);
+  const startupRetryCount = useRef(0);
+  const startupRetryDevice = useRef(deviceId);
 
   const changePhase = useCallback((next: WebChatPhase) => {
     phaseRef.current = next;
@@ -93,6 +97,11 @@ export function useDeviceWebChat(deviceId: string) {
 
     let disposed = false;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let startupRetryTimer: ReturnType<typeof setTimeout> | undefined;
+    if (startupRetryDevice.current !== deviceId) {
+      startupRetryDevice.current = deviceId;
+      startupRetryCount.current = 0;
+    }
     void Promise.resolve()
       .then(() => {
         if (disposed) return undefined;
@@ -142,6 +151,7 @@ export function useDeviceWebChat(deviceId: string) {
 
           const eventName = frameString(record, "event");
           if (eventName === "ready") {
+            startupRetryCount.current = 0;
             changePhase("ready");
             return;
           }
@@ -226,6 +236,17 @@ export function useDeviceWebChat(deviceId: string) {
           socketRef.current = null;
           if (pendingRun.current) completePendingRun("incomplete");
           if (phaseRef.current === "finished") return;
+          if (phaseRef.current === "connecting") {
+            const retryDelay = STARTUP_RETRY_DELAYS_MS[startupRetryCount.current];
+            if (retryDelay !== undefined) {
+              startupRetryCount.current += 1;
+              setError(undefined);
+              startupRetryTimer = setTimeout(() => {
+                if (!disposed) setAttempt((value) => value + 1);
+              }, retryDelay);
+              return;
+            }
+          }
           if (phaseRef.current === "finalizing") {
             // manager-api remains the source of truth if the final receipt was
             // lost during the closing handshake; the page keeps polling it.
@@ -241,7 +262,9 @@ export function useDeviceWebChat(deviceId: string) {
         });
 
         socket.addEventListener("error", () => {
-          if (!disposed) setError("Unable to connect to the WebSocket service");
+          if (!disposed && phaseRef.current !== "connecting") {
+            setError("Unable to connect to the WebSocket service");
+          }
         });
       })
       .catch((requestError: unknown) => {
@@ -253,6 +276,7 @@ export function useDeviceWebChat(deviceId: string) {
     return () => {
       disposed = true;
       if (heartbeat) clearInterval(heartbeat);
+      if (startupRetryTimer) clearTimeout(startupRetryTimer);
       const socket = socketRef.current;
       socketRef.current = null;
       if (socket && socket.readyState < WebSocket.CLOSING) {
@@ -335,7 +359,10 @@ export function useDeviceWebChat(deviceId: string) {
     void requestWebChatFinish(deviceId, session.sessionId).catch(() => undefined);
   }, [changePhase, deviceId, isRunning, session]);
 
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const retry = useCallback(() => {
+    startupRetryCount.current = 0;
+    setAttempt((value) => value + 1);
+  }, []);
 
   return {
     error,

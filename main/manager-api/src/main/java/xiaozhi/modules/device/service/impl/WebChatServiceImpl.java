@@ -251,7 +251,10 @@ public class WebChatServiceImpl implements WebChatService {
             session.setMessage(StringUtils.trimToNull(update.getMessage()));
             session.setUpdatedAt(System.currentTimeMillis());
             saveSession(session);
-            if (TERMINAL_STATUSES.contains(status)) {
+            // FINISHING sessions no longer accept turns. Release only this
+            // session's lock before memory persistence so an immediate browser
+            // refresh can establish the replacement session.
+            if ("FINISHING".equals(status) || TERMINAL_STATUSES.contains(status)) {
                 redisUtils.compareAndDelete(
                         RedisKeys.getWebChatDeviceLockKey(session.getDeviceId()), sessionId);
             }

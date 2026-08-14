@@ -3,7 +3,7 @@ import json
 import unittest
 from concurrent.futures import Future
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 # Importing provider modules initializes their loggers. Seed a hermetic config
 # first so protocol unit tests never contact manager-api or depend on data files.
@@ -234,6 +234,42 @@ class WebChatRoutingTest(unittest.IsolatedAsyncioTestCase):
             "error",
             code="session_state_unavailable",
             message="无法确认网页会话状态，请重新连接",
+        )
+
+    async def test_finalizing_state_is_reported_before_waiting_for_active_turn(self):
+        handler = object.__new__(ConnectionHandler)
+        active_turn = Future()
+        handler.is_web_chat = True
+        handler.web_chat_finalize_lock = asyncio.Lock()
+        handler.web_chat_memory_finalized = False
+        handler.web_chat_finishing = False
+        handler.web_chat_future = active_turn
+        handler.client_abort = False
+        handler._report_web_chat_status = AsyncMock(return_value=True)
+        handler._send_web_chat_event = AsyncMock()
+        handler._wait_for_web_chat_reports = AsyncMock()
+        handler.dialogue = SimpleNamespace(dialogue=[])
+        handler.memory = None
+        handler.session_id = "session-1"
+
+        finalizing = asyncio.create_task(
+            ConnectionHandler._finalize_web_chat(handler, send_to_client=False)
+        )
+        await asyncio.sleep(0)
+
+        handler._report_web_chat_status.assert_awaited_once_with(
+            "FINISHING", "PENDING"
+        )
+        self.assertTrue(handler.client_abort)
+        self.assertFalse(finalizing.done())
+
+        active_turn.set_result(True)
+        self.assertEqual("SKIPPED", await finalizing)
+        handler._report_web_chat_status.assert_has_awaits(
+            [
+                call("FINISHING", "PENDING"),
+                call("CLOSED", "SKIPPED", "当前智能体未启用可保存的记忆"),
+            ]
         )
 
 

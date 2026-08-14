@@ -478,6 +478,10 @@ class ConnectionHandler:
                 return getattr(self, "web_chat_memory_status", "SKIPPED")
 
             self.web_chat_finishing = True
+            # Publish FINISHING before waiting for an active turn or memory
+            # persistence. The manager can then release this session's device
+            # lock promptly when a browser refresh closes the transport.
+            await self._report_web_chat_status("FINISHING", "PENDING")
             if self.web_chat_future and not self.web_chat_future.done():
                 self.client_abort = True
                 try:
@@ -489,7 +493,6 @@ class ConnectionHandler:
                         "网页会话结束时当前轮次未能在限定时间内退出"
                     )
 
-            await self._report_web_chat_status("FINISHING", "PENDING")
             if send_to_client:
                 await self._send_web_chat_event(
                     "memory_pending", memory_status="PENDING"
