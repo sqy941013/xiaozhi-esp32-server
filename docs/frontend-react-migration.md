@@ -30,12 +30,14 @@
 
 新旧前端采用并行目录和独立镜像。迁移期间 Vue 管理台继续使用 `18002`，React 预览使用 `18012`；只有全部路由、权限、上传下载和高风险操作通过验收后，才在 Compose 中切换生产入口。
 
+Docker 构建默认通过 `https://registry.npmmirror.com` 下载 pnpm 依赖，并保留 BuildKit 内容缓存；如需切换源，可传入 `--build-arg PNPM_REGISTRY=<registry>`。HTTP/HTTPS 代理继续通过 Docker 标准构建参数注入，不写入镜像层或仓库配置。
+
 ## 实施阶段
 
 | 阶段 | 范围 | 合并条件 |
 | --- | --- | --- |
 | 1. 工程基础 | React/Vite/Tailwind/shadcn 基础、OpenAPI 类型、六语言、Docker、CI | 已完成本地质量、镜像、代理和浏览器验证 |
-| 2. 应用骨架 | 登录/注册/找回密码、令牌续用、权限守卫、菜单、整体布局、API 客户端 | 认证路径和权限矩阵与 Vue 版一致 |
+| 2. 应用骨架 | 登录/注册/找回密码、令牌续用、权限守卫、菜单、整体布局、API 客户端 | 已完成本地静态检查、单元测试、浏览器测试、镜像与真实代理验证 |
 | 3. 模型中心 | 模型配置、供应器管理、动态字段与敏感配置 | CRUD、启停、排序、密钥脱敏和模型调用配置通过 |
 | 4. 智能体与设备 | 首页、角色配置、模板、设备绑定、通讯录 | 快照、绑定、音频交互和高风险确认通过 |
 | 5. 知识与媒体 | 知识库、声纹、语音资源、声音克隆、OTA | 上传、下载、播放、进度和大文件路径通过 |
@@ -65,20 +67,33 @@ main/manager-web-next/
 
 | 业务域 | 旧版路由 | 风险 | 状态 |
 | --- | --- | --- | --- |
-| 认证 | `/`、`/login` | 高 | 待迁移 |
-| 认证 | `/register`、`/retrieve-password` | 中 | 待迁移 |
-| 智能体 | `/home`、`/role-config` | 极高 | 待迁移 |
+| 认证 | `/`、`/login` | 高 | 已迁移，等待阶段 2 合并 |
+| 认证 | `/register`、`/retrieve-password` | 中 | 已迁移，等待阶段 2 合并 |
+| 应用骨架 | 全部业务路由、权限导航、响应式布局 | 高 | 已迁移，等待阶段 2 合并 |
+| 智能体 | `/home`、`/role-config` | 极高 | 路由与权限完成，业务待阶段 4 |
 | 智能体 | `/agent-template-management`、`/template-quick-config` | 高 | 待迁移 |
-| 设备 | `/device-management`、`/address-book-management` | 高 | 待迁移 |
-| 模型 | `/model-config`、`/provider-management` | 高 | 待迁移 |
-| 知识库 | `/knowledge-base-management` | 高 | 待迁移 |
-| 语音 | `/voice-print`、`/voice-resource-management` | 高 | 待迁移 |
-| 语音 | `/voice-clone-management` | 高 | 待迁移 |
-| OTA | `/ota-management` | 高 | 待迁移 |
-| 系统 | `/user-management`、`/params-management` | 中 | 待迁移 |
-| 系统 | `/dict-management`、`/feature-management` | 中 | 待迁移 |
-| 系统 | `/replacement-word-management` | 中 | 待迁移 |
-| 运维 | `/server-side-management` | 高 | 待迁移 |
+| 设备 | `/device-management`、`/address-book-management` | 高 | 路由与权限完成，业务待阶段 4 |
+| 模型 | `/model-config`、`/provider-management` | 高 | 路由与权限完成，业务待阶段 3 |
+| 知识库 | `/knowledge-base-management` | 高 | 路由与权限完成，业务待阶段 5 |
+| 语音 | `/voice-print`、`/voice-resource-management` | 高 | 路由与权限完成，业务待阶段 5 |
+| 语音 | `/voice-clone-management` | 高 | 路由与权限完成，业务待阶段 5 |
+| OTA | `/ota-management` | 高 | 路由与权限完成，业务待阶段 5 |
+| 系统 | `/user-management`、`/params-management` | 中 | 路由与权限完成，业务待阶段 6 |
+| 系统 | `/dict-management`、`/feature-management` | 中 | 路由与权限完成，业务待阶段 6 |
+| 系统 | `/replacement-word-management` | 中 | 路由与权限完成，业务待阶段 6 |
+| 运维 | `/server-side-management` | 高 | 路由与权限完成，业务待阶段 6 |
+
+## 阶段 2 认证与权限约束
+
+- 沿用 Vue 前端的 `token` JSON 存储格式，可直接续用已有登录态；损坏的令牌会被安全忽略。
+- 登录、注册和找回密码继续使用后端要求的 SM2 C1C3C2 密文，明文密码不会进入请求体或日志。
+- 前端使用已修复安全公告的 `sm-crypto 0.5.5`，并由 Java/Bouncy Castle 跨语言固定密文测试锁定 C1C3C2 兼容性。
+- 所有业务路由默认受保护，只有 `/`、`/login`、`/register` 和 `/retrieve-password` 显式公开。
+- 超级管理员菜单与路由同时校验 `superAdmin === 1`；音色、知识库、声纹和通讯录同时受公共功能开关控制。
+- 登录前的跳转目标只接受站内绝对路径，拒绝 `//host` 和外部 URL，避免开放重定向。
+- 401 会原子清除令牌和用户缓存并回到登录页；公共配置缓存独立保留，用于服务短暂不可达时展示。
+- `Accept-Language` 与后端格式保持一致，英语发送 `en-US`，其余语言使用 BCP 47 格式。
+- 查询最多有限重试；登录、注册、短信、重置密码和修改密码等变更请求均不自动重试。
 
 ## 已确认的基线
 

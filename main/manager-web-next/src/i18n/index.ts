@@ -15,12 +15,32 @@ export const supportedLanguages = [
 const supportedCodes = new Set<string>(
   supportedLanguages.map(({ code }) => code),
 );
+
+export function resolveSupportedLanguage(language?: string | null): string | null {
+  if (!language) return null;
+  const normalized = language.replace("_", "-");
+  if (supportedCodes.has(normalized)) return normalized;
+
+  const lower = normalized.toLowerCase();
+  if (lower.startsWith("zh")) {
+    return /(^|-)tw|(^|-)hk|(^|-)mo|(^|-)hant/.test(lower)
+      ? "zh-TW"
+      : "zh-CN";
+  }
+  if (lower.startsWith("pt")) return "pt-BR";
+  if (lower.startsWith("de")) return "de";
+  if (lower.startsWith("vi")) return "vi";
+  if (lower.startsWith("en")) return "en";
+  return null;
+}
+
 const storedLanguage = window.localStorage.getItem("xiaozhi-language");
-const browserLanguage = navigator.language;
+const legacyLanguage = window.localStorage.getItem("userLanguage");
 const initialLanguage =
-  (storedLanguage && supportedCodes.has(storedLanguage) && storedLanguage) ||
-  (supportedCodes.has(browserLanguage) && browserLanguage) ||
-  "zh-CN";
+  resolveSupportedLanguage(storedLanguage) ||
+  resolveSupportedLanguage(legacyLanguage) ||
+  resolveSupportedLanguage(navigator.language) ||
+  "en";
 
 void i18n.use(initReactI18next).init({
   resources,

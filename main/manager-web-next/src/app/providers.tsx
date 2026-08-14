@@ -3,6 +3,7 @@ import { useState } from "react";
 import { RouterProvider } from "react-router/dom";
 
 import { router } from "@/app/router";
+import { AuthProvider } from "@/features/auth/auth-provider";
 
 export function AppProviders() {
   const [queryClient] = useState(
@@ -23,7 +24,9 @@ export function AppProviders() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

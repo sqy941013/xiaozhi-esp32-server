@@ -5,6 +5,7 @@ on:
     paths:
       - "main/manager-web-next/**"
       - "main/manager-api/src/main/java/xiaozhi/modules/sys/controller/SysParamsController.java"
+      - "main/manager-api/src/test/java/xiaozhi/common/utils/SM2FrontendCompatibilityTest.java"
       - "Dockerfile-web-next"
       - ".github/workflows/manager-web-next.yml"
   push:
@@ -13,6 +14,7 @@ on:
     paths:
       - "main/manager-web-next/**"
       - "main/manager-api/src/main/java/xiaozhi/modules/sys/controller/SysParamsController.java"
+      - "main/manager-api/src/test/java/xiaozhi/common/utils/SM2FrontendCompatibilityTest.java"
       - "Dockerfile-web-next"
       - ".github/workflows/manager-web-next.yml"
 
@@ -21,7 +23,7 @@ permissions:
 
 jobs:
   api-contract:
-    name: Compile manager API contract
+    name: Compile manager API and verify SM2 contract
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,8 +39,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Compile manager API
-        run: mvn -B -DskipTests compile
+      - name: Compile manager API and test frontend SM2 ciphertext
+        run: mvn -B -DskipTests=false -Dtest=SM2FrontendCompatibilityTest test
 
   quality:
     name: Lint, typecheck, test and build

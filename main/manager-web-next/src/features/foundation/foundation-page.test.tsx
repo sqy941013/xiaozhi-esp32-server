@@ -1,22 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { AppShell } from "@/app/shell";
+import { LanguageSelect } from "@/components/language-select";
 import i18n from "@/i18n";
 import { FoundationPage } from "@/features/foundation/foundation-page";
 
 function renderFoundation() {
   return render(
     <I18nextProvider i18n={i18n}>
-      <AppShell />
+      <LanguageSelect />
       <FoundationPage />
     </I18nextProvider>,
   );
 }
 
 describe("React manager foundation", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("zh-CN");
+  });
+
   afterEach(async () => {
     await i18n.changeLanguage("zh-CN");
     window.localStorage.clear();
