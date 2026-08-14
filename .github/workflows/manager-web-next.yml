@@ -7,9 +7,11 @@ on:
       - "main/manager-api/src/main/java/xiaozhi/modules/sys/controller/SysParamsController.java"
       - "main/manager-api/src/main/java/xiaozhi/common/utils/SensitiveDataUtils.java"
       - "main/manager-api/src/main/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImpl.java"
+      - "main/manager-api/src/main/java/xiaozhi/modules/device/service/impl/WebChatServiceImpl.java"
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SM2FrontendCompatibilityTest.java"
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SensitiveDataUtilsTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImplTest.java"
+      - "main/manager-api/src/test/java/xiaozhi/modules/device/service/impl/WebChatServiceImplTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/agent/service/impl/AgentSnapshotServiceImplTest.java"
       - "Dockerfile-web-next"
       - "Dockerfile-web"
@@ -30,9 +32,11 @@ on:
       - "main/manager-api/src/main/java/xiaozhi/modules/sys/controller/SysParamsController.java"
       - "main/manager-api/src/main/java/xiaozhi/common/utils/SensitiveDataUtils.java"
       - "main/manager-api/src/main/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImpl.java"
+      - "main/manager-api/src/main/java/xiaozhi/modules/device/service/impl/WebChatServiceImpl.java"
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SM2FrontendCompatibilityTest.java"
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SensitiveDataUtilsTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImplTest.java"
+      - "main/manager-api/src/test/java/xiaozhi/modules/device/service/impl/WebChatServiceImplTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/agent/service/impl/AgentSnapshotServiceImplTest.java"
       - "Dockerfile-web-next"
       - "Dockerfile-web"
@@ -68,7 +72,7 @@ jobs:
           cache: maven
 
       - name: Compile manager API and run compatibility tests
-        run: mvn -B -DskipTests=false -Dtest=SM2FrontendCompatibilityTest,SensitiveDataUtilsTest,ModelConfigServiceImplTest,AgentSnapshotServiceImplTest test
+        run: mvn -B -DskipTests=false -Dtest=SM2FrontendCompatibilityTest,SensitiveDataUtilsTest,ModelConfigServiceImplTest,AgentSnapshotServiceImplTest,WebChatServiceImplTest test
 
   quality:
     name: Lint, typecheck, test and build

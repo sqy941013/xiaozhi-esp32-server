@@ -197,4 +197,28 @@ describe("useDeviceWebChat", () => {
       expect(result.current.error).toContain("checking the final session state");
     });
   });
+
+  it("retries a transient disconnect while the initial connection is starting", async () => {
+    const rendered = renderHook(() => useDeviceWebChat("device-1"));
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+
+    const firstSocket = FakeWebSocket.instances[0];
+    if (!firstSocket) throw new Error("First WebSocket was not created");
+    act(() => firstSocket.serverClose());
+
+    expect(rendered.result.current.phase).toBe("connecting");
+    expect(rendered.result.current.error).toBeUndefined();
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(2), {
+      timeout: 1_500,
+    });
+
+    const replacementSocket = FakeWebSocket.instances[1];
+    if (!replacementSocket) throw new Error("Replacement WebSocket was not created");
+    act(() => replacementSocket.open());
+    act(() => replacementSocket.receive({ event: "ready", type: "web_chat" }));
+
+    await waitFor(() => expect(rendered.result.current.phase).toBe("ready"));
+    expect(createSessionMock).toHaveBeenCalledTimes(2);
+    expect(rendered.result.current.error).toBeUndefined();
+  });
 });
