@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -345,14 +346,21 @@ public class ModelConfigServiceImpl extends BaseServiceImpl<ModelConfigDao, Mode
         modelConfigEntity.setModelType(modelType);
 
         // 2. 只更新非敏感字段
+        modelConfigEntity.setModelCode(modelConfigBodyDTO.getModelCode());
         modelConfigEntity.setModelName(modelConfigBodyDTO.getModelName());
+        modelConfigEntity.setDocLink(modelConfigBodyDTO.getDocLink());
         modelConfigEntity.setSort(modelConfigBodyDTO.getSort());
         modelConfigEntity.setIsEnabled(modelConfigBodyDTO.getIsEnabled());
         modelConfigEntity.setRemark(modelConfigBodyDTO.getRemark());
         // 3. 处理配置JSON，仅更新非敏感字段和明确修改的敏感字段
         if (modelConfigBodyDTO.getConfigJson() != null && originalEntity.getConfigJson() != null) {
             JSONObject originalJson = originalEntity.getConfigJson();
-            JSONObject updatedJson = new JSONObject(originalJson); // 基于原始JSON进行修改
+            String originalProvider = originalJson.getStr("type", "");
+            String updatedProvider = modelConfigBodyDTO.getConfigJson().getStr("type", "");
+            boolean providerChanged = !Objects.equals(originalProvider, updatedProvider);
+            // 同一供应器基于原配置合并，以保留掩码后的密钥；切换供应器时从空配置开始，
+            // 避免旧供应器的密钥和私有字段被带入新配置。
+            JSONObject updatedJson = providerChanged ? new JSONObject() : new JSONObject(originalJson);
 
             // 遍历更新的JSON，只更新非敏感字段或确实被修改的敏感字段
             for (String key : modelConfigBodyDTO.getConfigJson().keySet()) {

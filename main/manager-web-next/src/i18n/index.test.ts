@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { resolveSupportedLanguage } from "@/i18n";
+import { resources } from "@/i18n/resources";
 
 describe("locale compatibility", () => {
   it("maps browser and legacy Vue locale codes to supported BCP 47 codes", () => {
@@ -10,5 +11,15 @@ describe("locale compatibility", () => {
     expect(resolveSupportedLanguage("de-DE")).toBe("de");
     expect(resolveSupportedLanguage("pt_PT")).toBe("pt-BR");
     expect(resolveSupportedLanguage("fr-FR")).toBeNull();
+  });
+
+  it("provides the model center workflow in every supported locale", () => {
+    for (const resource of Object.values(resources)) {
+      const modelCenter = resource.translation.modelCenter;
+      expect(modelCenter.models.title).toBeTruthy();
+      expect(modelCenter.providerForm.fieldKey).toBeTruthy();
+      expect(modelCenter.voices.name).toBeTruthy();
+      expect(modelCenter.feedback.modelSaveFailed).toBeTruthy();
+    }
   });
 });

@@ -18,13 +18,23 @@ public class SensitiveDataUtils {
     // 敏感字段列表
     private static final Set<String> SENSITIVE_FIELDS = new HashSet<>(Arrays.asList(
             "api_key", "personal_access_token", "access_token", "token",
-            "secret", "access_key_secret", "secret_key"));
+            "secret", "access_key_secret", "secret_key", "api_secret",
+            "appkey", "authorization", "credential", "credentials", "password",
+            "private_key", "secret_id"));
 
     /**
      * 检查字段是否为敏感字段
      */
     public static boolean isSensitiveField(String fieldName) {
-        return StringUtils.isNotBlank(fieldName) && SENSITIVE_FIELDS.contains(fieldName.toLowerCase());
+        if (StringUtils.isBlank(fieldName)) {
+            return false;
+        }
+        String normalized = fieldName.trim().toLowerCase();
+        return SENSITIVE_FIELDS.contains(normalized)
+                || normalized.endsWith("_api_key")
+                || normalized.endsWith("_password")
+                || normalized.endsWith("_secret")
+                || normalized.endsWith("_token");
     }
 
     /**
@@ -74,7 +84,7 @@ public class SensitiveDataUtils {
         for (String key : jsonObject.keySet()) {
             Object value = jsonObject.get(key);
 
-            if (SENSITIVE_FIELDS.contains(key.toLowerCase()) && value instanceof String) {
+            if (isSensitiveField(key) && value instanceof String) {
                 result.set(key, maskMiddle((String) value));
             } else if (value instanceof JSONObject) {
                 result.set(key, maskSensitiveFields((JSONObject) value));
@@ -98,53 +108,18 @@ public class SensitiveDataUtils {
             return false;
         }
 
-        // 提取并比较特定敏感字段
-        return compareSpecificSensitiveFields(original, updated, "api_key") &&
-                compareSpecificSensitiveFields(original, updated, "personal_access_token") &&
-                compareSpecificSensitiveFields(original, updated, "access_token") &&
-                compareSpecificSensitiveFields(original, updated, "token") &&
-                compareSpecificSensitiveFields(original, updated, "secret") &&
-                compareSpecificSensitiveFields(original, updated, "access_key_secret") &&
-                compareSpecificSensitiveFields(original, updated, "secret_key");
-    }
-
-    /**
-     * 比较两个JSON对象中特定敏感字段是否相同
-     * 遍历整个JSON对象树，查找并比较指定敏感字段
-     */
-    private static boolean compareSpecificSensitiveFields(JSONObject original, JSONObject updated, String fieldName) {
-        // 提取原始对象中的指定敏感字段
         Map<String, String> originalFields = new HashMap<>();
-        extractSpecificSensitiveField(original, originalFields, fieldName, "");
-
-        // 提取更新对象中的指定敏感字段
         Map<String, String> updatedFields = new HashMap<>();
-        extractSpecificSensitiveField(updated, updatedFields, fieldName, "");
-
-        // 如果字段数量不同，说明有增删
-        if (originalFields.size() != updatedFields.size()) {
-            return false;
-        }
-
-        // 比较每个字段的值
-        for (Map.Entry<String, String> entry : originalFields.entrySet()) {
-            String key = entry.getKey();
-            String originalValue = entry.getValue();
-            String updatedValue = updatedFields.get(key);
-
-            if (updatedValue == null || !updatedValue.equals(originalValue)) {
-                return false;
-            }
-        }
-
-        return true;
+        extractSensitiveFields(original, originalFields, "");
+        extractSensitiveFields(updated, updatedFields, "");
+        return originalFields.equals(updatedFields);
     }
 
     /**
-     * 递归提取JSON对象中指定名称的敏感字段
+     * 递归提取全部敏感字段，使用完整路径区分嵌套对象中的同名字段。
      */
-    private static void extractSpecificSensitiveField(JSONObject jsonObject, Map<String, String> fieldsMap,
-            String targetFieldName, String parentPath) {
+    private static void extractSensitiveFields(JSONObject jsonObject, Map<String, String> fieldsMap,
+            String parentPath) {
         if (jsonObject == null) {
             return;
         }
@@ -154,10 +129,8 @@ public class SensitiveDataUtils {
             Object value = jsonObject.get(key);
 
             if (value instanceof JSONObject) {
-                // 递归处理嵌套JSON对象
-                extractSpecificSensitiveField((JSONObject) value, fieldsMap, targetFieldName, fullPath);
-            } else if (value instanceof String && key.equalsIgnoreCase(targetFieldName)) {
-                // 找到目标敏感字段，保存其路径和值
+                extractSensitiveFields((JSONObject) value, fieldsMap, fullPath);
+            } else if (value instanceof String && isSensitiveField(key)) {
                 fieldsMap.put(fullPath, (String) value);
             }
         }

@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
+import { ModuleContent } from "@/app/module-content";
 import { moduleRoutes } from "@/app/module-routes";
 import { RouteErrorPage } from "@/app/route-error-page";
 import {
@@ -9,21 +10,12 @@ import {
   UnknownRoute,
 } from "@/app/route-guards";
 import { AppShell } from "@/app/shell";
-import { FoundationPage } from "@/features/foundation/foundation-page";
-import { ModulePlaceholder } from "@/features/foundation/module-placeholder";
-import { WorkspacePage } from "@/features/foundation/workspace-page";
 
 const protectedModuleRoutes = moduleRoutes.map((route) => ({
   path: route.path === "/foundation" ? "foundation/*" : route.path.slice(1),
   element: (
     <ModuleRouteGuard route={route}>
-      {route.path === "/home" ? (
-        <WorkspacePage />
-      ) : route.path === "/foundation" ? (
-        <FoundationPage />
-      ) : (
-        <ModulePlaceholder route={route} />
-      )}
+      <ModuleContent route={route} />
     </ModuleRouteGuard>
   ),
 }));

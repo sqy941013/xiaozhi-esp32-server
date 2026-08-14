@@ -3,9 +3,13 @@ import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-type AlertVariant = "error" | "info" | "success";
+type AlertVariant = "destructive" | "error" | "info" | "success";
 
 const variants = {
+  destructive: {
+    className: "border-destructive/30 bg-destructive/5 text-destructive",
+    icon: AlertCircle,
+  },
   error: {
     className: "border-destructive/30 bg-destructive/5 text-destructive",
     icon: AlertCircle,
@@ -34,11 +38,30 @@ export function Alert({
         variantClass,
         className,
       )}
-      role={variant === "error" ? "alert" : "status"}
+      role={variant === "error" || variant === "destructive" ? "alert" : "status"}
       {...props}
     >
       <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-      <div>{children}</div>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
+  );
+}
+
+export function AlertTitle({
+  className,
+  ...props
+}: HTMLAttributes<HTMLHeadingElement>) {
+  return <h5 className={cn("font-medium leading-5", className)} {...props} />;
+}
+
+export function AlertDescription({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("mt-0.5 text-sm leading-5 opacity-90", className)}
+      {...props}
+    />
   );
 }
