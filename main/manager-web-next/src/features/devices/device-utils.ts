@@ -5,6 +5,17 @@ import type {
 
 export const MAC_ADDRESS_PATTERN = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 
+export function deviceGeneratorPath(
+  deviceId: string,
+  basePath = "/",
+): string {
+  const absoluteBase = basePath.startsWith("/") ? basePath : `/${basePath}`;
+  const normalizedBase = absoluteBase.endsWith("/")
+    ? absoluteBase
+    : `${absoluteBase}/`;
+  return `${normalizedBase}generator/?deviceId=${encodeURIComponent(deviceId)}`;
+}
+
 export function parseDeviceOnlineMap(value: unknown): DeviceOnlineMap {
   if (typeof value !== "string" || !value.trim()) return {};
   try {
