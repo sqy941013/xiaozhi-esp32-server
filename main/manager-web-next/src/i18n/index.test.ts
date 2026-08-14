@@ -22,4 +22,20 @@ describe("locale compatibility", () => {
       expect(modelCenter.feedback.modelSaveFailed).toBeTruthy();
     }
   });
+
+  it("provides agent, device, snapshot, template, and voiceprint workflows in every locale", () => {
+    for (const resource of Object.values(resources)) {
+      const agentCenter = resource.translation.agentCenter;
+      expect(resource.translation.common.pageSize).toBeTruthy();
+      expect(resource.translation.common.play).toBeTruthy();
+      expect(resource.translation.dashboard.noAgents).toBeTruthy();
+      expect(agentCenter.home.addAgent).toBeTruthy();
+      expect(agentCenter.roleConfig.saveConfig).toBeTruthy();
+      expect(agentCenter.agentSnapshot.restoreConfirm).toBeTruthy();
+      expect(agentCenter.device.bindWithCode).toBeTruthy();
+      expect(agentCenter.addressBookManagement.permissionSaved).toBeTruthy();
+      expect(agentCenter.agentTemplateManagement.createTemplate).toBeTruthy();
+      expect(agentCenter.voicePrintDialog.requiredAudioVector).toBeTruthy();
+    }
+  });
 });

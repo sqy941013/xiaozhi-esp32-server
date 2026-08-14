@@ -11,6 +11,7 @@ interface PaginationProps {
   pageSize: number;
   pageSizeLabel: string;
   previousLabel: string;
+  showPageSize?: boolean;
   total: number;
 }
 
@@ -23,6 +24,7 @@ export function Pagination({
   pageSize,
   pageSizeLabel,
   previousLabel,
+  showPageSize = true,
   total,
 }: PaginationProps) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -37,21 +39,23 @@ export function Pagination({
           .replace("{{total}}", String(total))}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          {pageSizeLabel}
-          <select
-            aria-label={pageSizeLabel}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            value={pageSize}
-          >
-            {[10, 20, 50, 100].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
+        {showPageSize ? (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            {pageSizeLabel}
+            <select
+              aria-label={pageSizeLabel}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
+              value={pageSize}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <Button
           aria-label={previousLabel}
           disabled={currentPage <= 1}

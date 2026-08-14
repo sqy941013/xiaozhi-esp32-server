@@ -31,7 +31,12 @@ export function ModuleRouteGuard({
   children: ReactNode;
   route: ModuleRoute;
 }) {
-  const { publicConfig, user } = useAuth();
+  const { configLoading, publicConfig, user } = useAuth();
+
+  if (route.feature && configLoading && !publicConfig) {
+    return <LoadingScreen />;
+  }
+
   return canAccessRoute(route, user, publicConfig) ? children : <Navigate replace to="/home" />;
 }
 
