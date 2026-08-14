@@ -14,12 +14,12 @@ export function useCaptcha() {
 
   const refresh = useCallback(async () => {
     const requestId = ++requestSequence.current;
-    const nextId = createCaptchaId();
-    setCaptchaId(nextId);
     setLoading(true);
     setError(false);
 
     try {
+      const nextId = createCaptchaId();
+      setCaptchaId(nextId);
       const blob = await getCaptcha(nextId);
       if (!mounted.current || requestId !== requestSequence.current) return;
       const nextUrl = URL.createObjectURL(blob);
@@ -28,6 +28,7 @@ export function useCaptcha() {
       setCaptchaUrl(nextUrl);
     } catch {
       if (!mounted.current || requestId !== requestSequence.current) return;
+      setCaptchaId("");
       setError(true);
       setCaptchaUrl("");
     } finally {
