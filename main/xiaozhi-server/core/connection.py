@@ -29,6 +29,7 @@ from core.utils.modules_initialize import (
 )
 from core.handle.reportHandle import report, enqueue_tool_report
 from core.providers.tts.default import DefaultTTS
+from core.providers.tts.web_chat import WebChatTTS
 from concurrent.futures import ThreadPoolExecutor
 from core.utils.dialogue import Message, Dialogue
 from core.providers.asr.dto.dto import InterfaceType
@@ -40,7 +41,12 @@ from core.auth import AuthenticationError
 from config.config_loader import get_private_config_from_api
 from core.providers.tts.dto.dto import ContentType, TTSMessageDTO, SentenceType
 from config.logger import setup_logging, build_module_string, create_connection_logger
-from config.manage_api_client import DeviceNotFoundException, DeviceBindException, generate_and_save_chat_title
+from config.manage_api_client import (
+    DeviceNotFoundException,
+    DeviceBindException,
+    generate_and_save_chat_title,
+    update_web_chat_session,
+)
 from core.utils.prompt_manager import PromptManager
 from core.utils.voiceprint_provider import VoiceprintProvider
 from core.utils.util import get_system_error_response
@@ -86,12 +92,32 @@ class ConnectionHandler:
             _memory,
             _intent,
             server=None,
+            web_chat_context=None,
     ):
         self.common_config = config
         self.config = copy.deepcopy(config)
-        self.session_id = str(uuid.uuid4())
+        self.web_chat_context = web_chat_context
+        self.is_web_chat = web_chat_context is not None
+        self.session_id = (
+            web_chat_context.get("sessionId")
+            if self.is_web_chat
+            else str(uuid.uuid4())
+        )
         self.logger = setup_logging()
         self.server = server  # 保存server实例的引用
+
+        # Web console sessions intentionally expose a much smaller capability
+        # surface than hardware clients.
+        self.components_ready_event = asyncio.Event()
+        self.web_chat_finalize_lock = asyncio.Lock()
+        self.web_chat_memory_finalized = False
+        self.web_chat_finishing = False
+        self.web_chat_turn_id = None
+        self.web_chat_client_message_id = None
+        self.web_chat_sequence = 0
+        self.web_chat_future = None
+        self.web_chat_turn_outcome = None
+        self.web_chat_initialization_error = None
 
         self.need_bind = False  # 是否需要绑定设备
         self.bind_completed_event = asyncio.Event()
@@ -207,6 +233,11 @@ class ConnectionHandler:
 
             # 获取并验证headers
             self.headers = dict(ws.request.headers)
+            if self.is_web_chat:
+                # Ignore any browser-controlled identity headers. The values
+                # below are signed into and returned by the redeemed ticket.
+                self.headers["device-id"] = self.web_chat_context["deviceMac"]
+                self.headers["client-id"] = self.web_chat_context["clientId"]
             real_ip = self.headers.get("x-real-ip") or self.headers.get(
                 "x-forwarded-for"
             )
@@ -214,8 +245,12 @@ class ConnectionHandler:
                 self.client_ip = real_ip.split(",")[0].strip()
             else:
                 self.client_ip = ws.remote_address[0]
+            safe_headers = {
+                key: ("***" if key.lower() in {"authorization", "cookie"} else value)
+                for key, value in self.headers.items()
+            }
             self.logger.bind(tag=TAG).info(
-                f"{self.client_ip} conn - Headers: {self.headers}"
+                f"{self.client_ip} conn - Headers: {safe_headers}"
             )
 
             self.device_id = self.headers.get("device-id", None)
@@ -233,13 +268,16 @@ class ConnectionHandler:
             self.first_activity_time = time.time() * 1000
             self.last_activity_time = time.time() * 1000
 
+            if self.is_web_chat:
+                await self._send_web_chat_event("initializing")
+
             # 启动超时检查任务
             self.timeout_task = asyncio.create_task(self._check_timeout())
 
             # 启动AEC缓存清理任务
             self._aec_cache_cleanup_task = asyncio.create_task(self._check_aec_cache_expiry())
 
-            self.welcome_msg = self.config["xiaozhi"]
+            self.welcome_msg = copy.deepcopy(self.config["xiaozhi"])
             self.welcome_msg["session_id"] = self.session_id
 
             # 从配置中读取采样率
@@ -277,6 +315,13 @@ class ConnectionHandler:
 
     async def _save_and_close(self, ws):
         """保存记忆并关闭连接"""
+        if self.is_web_chat:
+            try:
+                await self._finalize_web_chat(send_to_client=False)
+            finally:
+                await self.close(ws)
+            return
+
         try:
             # 守护线程1：独立生成标题（不依赖记忆模型）
             if self.session_id:
@@ -331,6 +376,351 @@ class ConnectionHandler:
                     f"保存记忆后关闭连接失败: {close_error}"
                 )
 
+    async def _send_web_chat_event(self, event, **payload):
+        if not self.is_web_chat or not self.websocket:
+            return
+        message = {
+            "type": "web_chat",
+            "event": event,
+            "session_id": self.session_id,
+            **payload,
+        }
+        try:
+            await self.websocket.send(json.dumps(message, ensure_ascii=False))
+        except Exception as error:
+            self.logger.bind(tag=TAG).debug(
+                f"网页会话事件发送失败({event}): {type(error).__name__}"
+            )
+
+    async def send_web_chat_assistant_delta(self, text):
+        if not self.is_web_chat or not self.web_chat_turn_id or not text:
+            return
+        self.web_chat_sequence += 1
+        await self._send_web_chat_event(
+            "assistant_delta",
+            turn_id=self.web_chat_turn_id,
+            client_message_id=self.web_chat_client_message_id,
+            sequence=self.web_chat_sequence,
+            delta=text,
+        )
+
+    async def _complete_web_chat_initialization(self, success, error=None):
+        if not self.is_web_chat:
+            self.components_ready_event.set()
+            return
+        if success:
+            status_saved = await self._report_web_chat_status("READY", "IDLE")
+            if status_saved:
+                self.components_ready_event.set()
+                await self._send_web_chat_event(
+                    "ready",
+                    max_session_seconds=15 * 60,
+                    capabilities={"text": True, "memory": True},
+                )
+                return
+            error = "无法确认网页会话状态"
+
+        message = error or "网页对话组件初始化失败"
+        self.web_chat_initialization_error = message
+        await self._report_web_chat_status("FAILED", "SKIPPED", message)
+        self.components_ready_event.set()
+        await self._send_web_chat_event(
+            "error", code="initialization_failed", message=message
+        )
+        if self.websocket:
+            try:
+                await self.websocket.close(code=1011, reason="网页对话初始化失败")
+            except Exception:
+                pass
+
+    async def _report_web_chat_status(
+        self, status, memory_status="IDLE", message=None
+    ):
+        if not self.is_web_chat:
+            return True
+        try:
+            result = await update_web_chat_session(
+                self.session_id, status, memory_status, message
+            )
+            return (
+                isinstance(result, dict)
+                and result.get("status") == status
+            )
+        except Exception as error:
+            self.logger.bind(tag=TAG).error(
+                f"网页会话状态上报失败: {type(error).__name__}"
+            )
+            return False
+
+    def _web_chat_memory_type(self):
+        try:
+            selected = self.config.get("selected_module", {}).get("Memory")
+            return self.config.get("Memory", {}).get(selected, {}).get("type", "")
+        except Exception:
+            return ""
+
+    async def _wait_for_web_chat_reports(self):
+        if not self.report_thread or not self.report_thread.is_alive():
+            return
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(self.report_queue.join), timeout=15
+            )
+        except asyncio.TimeoutError:
+            self.logger.bind(tag=TAG).warning("网页会话聊天记录上报等待超时")
+
+    async def _finalize_web_chat(self, send_to_client=True):
+        if not self.is_web_chat:
+            return "SKIPPED"
+
+        async with self.web_chat_finalize_lock:
+            if self.web_chat_memory_finalized:
+                return getattr(self, "web_chat_memory_status", "SKIPPED")
+
+            self.web_chat_finishing = True
+            if self.web_chat_future and not self.web_chat_future.done():
+                self.client_abort = True
+                try:
+                    await asyncio.wait_for(
+                        asyncio.wrap_future(self.web_chat_future), timeout=15
+                    )
+                except Exception:
+                    self.logger.bind(tag=TAG).warning(
+                        "网页会话结束时当前轮次未能在限定时间内退出"
+                    )
+
+            await self._report_web_chat_status("FINISHING", "PENDING")
+            if send_to_client:
+                await self._send_web_chat_event(
+                    "memory_pending", memory_status="PENDING"
+                )
+
+            await self._wait_for_web_chat_reports()
+            memory_status = "SKIPPED"
+            result_message = "当前智能体未启用可保存的记忆"
+            actual_messages = [
+                message
+                for message in self.dialogue.dialogue
+                if message.role in {"user", "assistant"}
+                and not getattr(message, "is_temporary", False)
+                and message.content
+            ]
+            try:
+                memory_type = self._web_chat_memory_type()
+                if self.memory is None or memory_type in {"", "nomem", "mem_report_only"}:
+                    memory_status = "SKIPPED"
+                elif len(actual_messages) < 2:
+                    memory_status = "NO_CHANGE"
+                    result_message = "本次会话没有可提取的新记忆"
+                else:
+                    result = await asyncio.wait_for(
+                        self.memory.save_memory(
+                            list(self.dialogue.dialogue), self.session_id
+                        ),
+                        timeout=180,
+                    )
+                    if (
+                        isinstance(result, dict)
+                        and isinstance(result.get("results"), list)
+                        and len(result["results"]) == 0
+                    ):
+                        memory_status = "NO_CHANGE"
+                        result_message = "Mem0 未发现需要新增或更新的事实"
+                    else:
+                        memory_status = "COMMITTED"
+                        result_message = "记忆已经保存"
+            except asyncio.TimeoutError:
+                memory_status = "FAILED"
+                result_message = "记忆保存超时，可稍后重新对话保存"
+                self.logger.bind(tag=TAG).error("网页会话 Mem0 保存超时")
+            except Exception as error:
+                memory_status = "FAILED"
+                result_message = "记忆保存失败，请检查 Mem0 服务"
+                self.logger.bind(tag=TAG).error(
+                    f"网页会话 Mem0 保存失败: {type(error).__name__}: {error}"
+                )
+
+            if self.session_id and len(actual_messages) >= 2:
+                try:
+                    await asyncio.wait_for(
+                        generate_and_save_chat_title(self.session_id), timeout=60
+                    )
+                except Exception as error:
+                    self.logger.bind(tag=TAG).warning(
+                        f"网页会话标题生成失败: {type(error).__name__}"
+                    )
+
+            self.web_chat_memory_status = memory_status
+            self.web_chat_memory_finalized = True
+            await self._report_web_chat_status(
+                "CLOSED", memory_status, result_message
+            )
+            if send_to_client:
+                event = "memory_failed" if memory_status == "FAILED" else "memory_committed"
+                await self._send_web_chat_event(
+                    event,
+                    memory_status=memory_status,
+                    message=result_message,
+                )
+            return memory_status
+
+    async def finish_web_chat(self):
+        if not self.is_web_chat:
+            return
+        active_future = self.web_chat_future and not self.web_chat_future.done()
+        if active_future or self.web_chat_turn_id or self.client_is_speaking:
+            await self._send_web_chat_event(
+                "finish_rejected",
+                code="turn_active",
+                message="请等待当前回复结束或先停止生成",
+            )
+            return
+        await self._finalize_web_chat(send_to_client=True)
+        try:
+            await self.websocket.close(code=1000, reason="网页会话已保存")
+        except Exception:
+            pass
+
+    async def begin_web_chat_turn(self, client_message_id):
+        if not self.is_web_chat:
+            return True
+        if self.web_chat_finishing:
+            await self._send_web_chat_event(
+                "error", code="session_finishing", message="会话正在结束"
+            )
+            return False
+        active_future = self.web_chat_future and not self.web_chat_future.done()
+        if active_future or self.web_chat_turn_id or self.client_is_speaking:
+            await self._send_web_chat_event(
+                "error", code="turn_busy", message="请等待当前回复完成"
+            )
+            return False
+        self.web_chat_turn_id = uuid.uuid4().hex
+        self.web_chat_client_message_id = client_message_id or uuid.uuid4().hex
+        self.web_chat_sequence = 0
+        self.web_chat_turn_outcome = None
+        if not await self._report_web_chat_status("ACTIVE", "IDLE"):
+            self.web_chat_turn_id = None
+            self.web_chat_client_message_id = None
+            await self._send_web_chat_event(
+                "error",
+                code="session_state_unavailable",
+                message="无法确认网页会话状态，请重新连接",
+            )
+            return False
+        await self._send_web_chat_event(
+            "turn_started",
+            turn_id=self.web_chat_turn_id,
+            client_message_id=self.web_chat_client_message_id,
+        )
+        return True
+
+    async def complete_web_chat_turn(self):
+        if not self.is_web_chat or not self.web_chat_turn_id:
+            return
+        active_future = self.web_chat_future
+        if active_future and not active_future.done():
+            try:
+                await asyncio.wait_for(
+                    asyncio.wrap_future(active_future), timeout=5
+                )
+            except Exception:
+                self.logger.bind(tag=TAG).warning(
+                    "网页会话回复队列结束，但模型任务尚未退出"
+                )
+        turn_id = self.web_chat_turn_id
+        outcome = self.web_chat_turn_outcome or "complete"
+        self.web_chat_turn_id = None
+        self.web_chat_client_message_id = None
+        self.web_chat_future = None
+        self.web_chat_turn_outcome = None
+        message = "模型生成回复时发生错误" if outcome == "error" else None
+        await self._report_web_chat_status("READY", "IDLE", message)
+        if outcome == "error":
+            await self._send_web_chat_event(
+                "error", code="generation_failed", message=message
+            )
+        await self._send_web_chat_event(
+            "turn_completed", turn_id=turn_id, outcome=outcome
+        )
+
+    async def abort_web_chat_turn(self):
+        """Cancel one browser turn and always resolve its protocol lifecycle."""
+        if not self.is_web_chat or not self.web_chat_turn_id:
+            return
+
+        turn_id = self.web_chat_turn_id
+        self.web_chat_turn_outcome = "cancelled"
+        self.client_abort = True
+        self.clear_queues()
+        active_future = self.web_chat_future
+        timed_out = False
+        if active_future and not active_future.done():
+            try:
+                await asyncio.wait_for(
+                    asyncio.shield(asyncio.wrap_future(active_future)), timeout=15
+                )
+            except asyncio.TimeoutError:
+                timed_out = True
+            except Exception:
+                self.web_chat_turn_outcome = "error"
+
+        # A LAST message may have completed the turn while the model future was
+        # winding down. In that case its event is already authoritative.
+        if self.web_chat_turn_id != turn_id:
+            return
+
+        outcome = "error" if self.web_chat_turn_outcome == "error" else "cancelled"
+        self.clear_queues()
+        self.web_chat_turn_id = None
+        self.web_chat_client_message_id = None
+        self.web_chat_future = None
+        self.web_chat_turn_outcome = None
+        self.clearSpeakStatus()
+
+        if timed_out:
+            message = "停止生成超时，网页会话已关闭"
+            self.web_chat_finishing = True
+            await self._report_web_chat_status("FAILED", "SKIPPED", message)
+            await self._send_web_chat_event(
+                "error", code="generation_cancel_timeout", message=message
+            )
+            await self._send_web_chat_event(
+                "turn_completed", turn_id=turn_id, outcome="error"
+            )
+            if self.websocket:
+                await self.websocket.close(code=1011, reason="停止生成超时")
+            return
+
+        await self._report_web_chat_status("READY", "IDLE")
+        if outcome == "error":
+            await self._send_web_chat_event(
+                "error",
+                code="generation_failed",
+                message="模型生成回复时发生错误",
+            )
+        await self._send_web_chat_event(
+            "turn_completed", turn_id=turn_id, outcome=outcome
+        )
+
+    async def fail_web_chat_turn(self, future, message):
+        if not self.is_web_chat or future is not self.web_chat_future:
+            return
+        turn_id = self.web_chat_turn_id
+        self.web_chat_turn_id = None
+        self.web_chat_client_message_id = None
+        self.web_chat_future = None
+        self.web_chat_turn_outcome = None
+        self.clearSpeakStatus()
+        await self._report_web_chat_status("READY", "IDLE", message)
+        await self._send_web_chat_event(
+            "error", code="generation_failed", message=message
+        )
+        if turn_id:
+            await self._send_web_chat_event(
+                "turn_completed", turn_id=turn_id, outcome="error"
+            )
+
     async def _discard_message_with_bind_prompt(self):
         """丢弃消息并检查是否需要播放绑定提示"""
         current_time = time.time()
@@ -344,6 +734,10 @@ class ConnectionHandler:
 
     async def _route_message(self, message):
         """消息路由"""
+        if self.is_web_chat:
+            await self._route_web_chat_message(message)
+            return
+
         # 检查是否已经获取到真实的绑定状态
         if not self.bind_completed_event.is_set():
             # 还没有获取到真实状态，等待直到获取到真实状态或超时
@@ -378,6 +772,114 @@ class ConnectionHandler:
             pcm_frame = self._decode_opus_packet(message)
             if pcm_frame:
                 self.asr_audio_queue.put(pcm_frame)
+
+    async def _route_web_chat_message(self, message):
+        """Validate the browser protocol before it reaches device handlers."""
+        self.last_activity_time = time.time() * 1000
+        if isinstance(message, bytes):
+            await self._send_web_chat_event(
+                "error", code="binary_not_allowed", message="网页对话仅支持文字输入"
+            )
+            await self.websocket.close(code=1008, reason="不支持二进制输入")
+            return
+        # A 4,000-character message may occupy up to 16 KiB in UTF-8. Keep a
+        # separate frame cap for JSON overhead and ignored client fields.
+        if not isinstance(message, str) or len(message.encode("utf-8")) > 32 * 1024:
+            await self._send_web_chat_event(
+                "error", code="message_too_large", message="消息过长"
+            )
+            return
+
+        try:
+            payload = json.loads(message)
+        except json.JSONDecodeError:
+            await self._send_web_chat_event(
+                "error", code="invalid_json", message="消息格式无效"
+            )
+            return
+        if not isinstance(payload, dict):
+            await self._send_web_chat_event(
+                "error", code="invalid_message", message="消息格式无效"
+            )
+            return
+
+        message_type = payload.get("type")
+        if message_type == "hello":
+            await handleTextMessage(
+                self,
+                json.dumps(
+                    {
+                        "type": "hello",
+                        "version": 1,
+                        "transport": "websocket",
+                        "features": {"mcp": False, "aec": False, "emoji": False},
+                    }
+                ),
+            )
+            return
+        if message_type == "ping":
+            await self.websocket.send(
+                json.dumps({"type": "pong", "timestamp": int(time.time() * 1000)})
+            )
+            return
+        if message_type == "session" and payload.get("action") == "finish":
+            await self.finish_web_chat()
+            return
+        if message_type == "abort":
+            await self.abort_web_chat_turn()
+            return
+        if message_type != "listen" or payload.get("state") != "detect":
+            await self._send_web_chat_event(
+                "error", code="capability_not_allowed", message="网页会话不支持该操作"
+            )
+            return
+
+        text = payload.get("text")
+        client_message_id = payload.get("client_message_id")
+        if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+            await self._send_web_chat_event(
+                "error", code="invalid_text", message="请输入 1 到 4000 个字符"
+            )
+            return
+        if client_message_id is not None and (
+            not isinstance(client_message_id, str)
+            or len(client_message_id) > 128
+            or not re.fullmatch(r"[A-Za-z0-9_-]+", client_message_id)
+        ):
+            await self._send_web_chat_event(
+                "error", code="invalid_message_id", message="消息标识无效"
+            )
+            return
+
+        try:
+            await asyncio.wait_for(self.bind_completed_event.wait(), timeout=15)
+            await asyncio.wait_for(self.components_ready_event.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            await self._send_web_chat_event(
+                "error", code="initialization_timeout", message="智能体初始化超时，请重试"
+            )
+            return
+        if self.need_bind or self.web_chat_initialization_error or self.llm is None:
+            await self._send_web_chat_event(
+                "error",
+                code="initialization_failed",
+                message=self.web_chat_initialization_error or "智能体配置不可用",
+            )
+            return
+
+        await handleTextMessage(
+            self,
+            json.dumps(
+                {
+                    "type": "listen",
+                    "state": "detect",
+                    "mode": "manual",
+                    "text": text.strip(),
+                    "client_message_id": client_message_id,
+                },
+                ensure_ascii=False,
+            ),
+        )
 
     async def _process_mqtt_audio_message(self, message):
         """
@@ -601,15 +1103,24 @@ class ConnectionHandler:
             )
 
     def _initialize_components(self):
+        success = False
+        error_message = None
         try:
-            if self.tts is None:
+            if self.is_web_chat:
+                # Browser chat is text-only. Do not instantiate or bill the
+                # device's speech provider for a console message.
+                self.tts = WebChatTTS()
+            elif self.tts is None:
                 self.tts = self._initialize_tts()
             # 打开语音合成通道
-            asyncio.run_coroutine_threadsafe(
+            open_tts_future = asyncio.run_coroutine_threadsafe(
                 self.tts.open_audio_channels(self), self.loop
             )
+            if self.is_web_chat:
+                open_tts_future.result(timeout=10)
             if self.need_bind:
                 self.bind_completed_event.set()
+                error_message = "设备配置不可用"
                 return
             self.selected_module_str = build_module_string(
                 self.config.get("selected_module", {})
@@ -627,17 +1138,21 @@ class ConnectionHandler:
                 )
 
             """初始化本地组件"""
-            if self.vad is None:
-                self.vad = self._vad
-            if self.asr is None:
-                self.asr = self._initialize_asr()
+            if not self.is_web_chat:
+                if self.vad is None:
+                    self.vad = self._vad
+                if self.asr is None:
+                    self.asr = self._initialize_asr()
 
-            # 初始化声纹识别
-            self._initialize_voiceprint()
-            # 打开语音识别通道
-            asyncio.run_coroutine_threadsafe(
-                self.asr.open_audio_channels(self), self.loop
-            )
+                # 初始化声纹识别
+                self._initialize_voiceprint()
+                # 打开语音识别通道
+                asyncio.run_coroutine_threadsafe(
+                    self.asr.open_audio_channels(self), self.loop
+                )
+
+            if self.llm is None:
+                raise RuntimeError("LLM 服务未初始化")
 
             """加载记忆"""
             self._initialize_memory()
@@ -649,9 +1164,19 @@ class ConnectionHandler:
             self._init_prompt_enhancement()
             """注入工具调用few-shot示例（仅function_call模式）"""
             self._inject_tool_call_fewshot()
+            success = True
 
         except Exception as e:
+            error_message = "智能体组件初始化失败"
             self.logger.bind(tag=TAG).error(f"实例化组件失败: {e}")
+        finally:
+            if self.loop and not self.loop.is_closed():
+                asyncio.run_coroutine_threadsafe(
+                    self._complete_web_chat_initialization(
+                        success, error_message
+                    ),
+                    self.loop,
+                )
 
     def _init_prompt_enhancement(self):
 
@@ -793,6 +1318,9 @@ class ConnectionHandler:
             self.executor.submit(self._initialize_components)
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"后台初始化失败: {e}")
+            await self._complete_web_chat_initialization(
+                False, "无法加载智能体配置"
+            )
 
     async def _initialize_private_config_async(self):
         """从接口异步获取差异化配置（异步版本，不阻塞主循环）"""
@@ -922,6 +1450,13 @@ class ConnectionHandler:
                 "correct_words"
             ]
 
+        if self.is_web_chat:
+            # Only the LLM and memory provider are needed for text chat.
+            init_vad = False
+            init_asr = False
+            init_tts = False
+            init_intent = False
+
         # 使用 run_in_executor 在线程池中执行 initialize_modules，避免阻塞主循环
         try:
             modules = await self.loop.run_in_executor(
@@ -939,7 +1474,7 @@ class ConnectionHandler:
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"初始化组件失败: {e}")
             modules = {}
-        if modules.get("tts", None) is not None:
+        if not self.is_web_chat and modules.get("tts", None) is not None:
             self.tts = modules["tts"]
         if modules.get("vad", None) is not None:
             self.vad = modules["vad"]
@@ -947,7 +1482,7 @@ class ConnectionHandler:
             self.asr = modules["asr"]
         if modules.get("llm", None) is not None:
             self.llm = modules["llm"]
-        if modules.get("intent", None) is not None:
+        if not self.is_web_chat and modules.get("intent", None) is not None:
             self.intent = modules["intent"]
         if modules.get("memory", None) is not None:
             self.memory = modules["memory"]
@@ -995,6 +1530,11 @@ class ConnectionHandler:
                 self.logger.bind(tag=TAG).info("使用主LLM作为意图识别模型")
 
     def _initialize_intent(self):
+        if self.is_web_chat:
+            self.intent_type = "nointent"
+            self.load_function_plugin = False
+            self.func_handler = None
+            return
         if self.intent is None:
             return
         self.intent_type = self.config["Intent"][
@@ -1216,6 +1756,8 @@ class ConnectionHandler:
                         )
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"LLM stream processing error: {e}")
+            if self.is_web_chat:
+                self.web_chat_turn_outcome = "error"
             self.tts.tts_text_queue.put(
                 TTSMessageDTO(
                     sentence_id=current_sentence_id,
@@ -1232,6 +1774,11 @@ class ConnectionHandler:
                         content_type=ContentType.ACTION,
                     )
                 )
+            # Web chat still has an error message queued for its text-only TTS
+            # adapter.  Let the normal LAST-message lifecycle finish the turn so
+            # the browser receives every delta before turn_completed.
+            if self.is_web_chat:
+                return True
             return
         # 处理function call
         if tool_call_flag:
@@ -1673,6 +2220,7 @@ class ConnectionHandler:
                 while True:
                     try:
                         q.get_nowait()
+                        q.task_done()
                     except queue.Empty:
                         break
 
@@ -1724,6 +2272,22 @@ class ConnectionHandler:
                 # 检查是否超时（只有在时间戳已初始化的情况下）
                 if last_activity_time > 0.0:
                     current_time = time.time() * 1000
+                    if (
+                        self.is_web_chat
+                        and self.first_activity_time > 0.0
+                        and current_time - self.first_activity_time > 15 * 60 * 1000
+                    ):
+                        self.logger.bind(tag=TAG).info("网页会话达到最长时限，准备保存")
+                        await self._send_web_chat_event(
+                            "session_expired", message="会话已达到 15 分钟时限"
+                        )
+                        try:
+                            await self.websocket.close(
+                                code=1000, reason="网页会话时限已到"
+                            )
+                        except Exception:
+                            pass
+                        break
                     if current_time - last_activity_time > self.timeout_seconds * 1000:
                         if not self.stop_event.is_set():
                             self.logger.bind(tag=TAG).info("连接超时，准备关闭")

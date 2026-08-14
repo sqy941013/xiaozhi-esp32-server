@@ -113,4 +113,8 @@ class ListenTextMessageHandler(TextMessageHandler):
                     # 上报纯文字数据（复用ASR上报功能，但不提供音频数据）
                     enqueue_asr_report(conn, original_text, [])
                     # 否则需要LLM对文字内容进行答复
-                    await startToChat(conn, original_text)
+                    await startToChat(
+                        conn,
+                        original_text,
+                        client_message_id=msg_json.get("client_message_id"),
+                    )

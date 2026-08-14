@@ -2,6 +2,7 @@ import { modelCenterResources } from "@/i18n/model-center-resources";
 import { legacyAgentResources } from "@/i18n/legacy-agent-resources.generated";
 import { adminCenterResources } from "@/i18n/admin-center-resources";
 import { legacyMediaResources } from "@/i18n/legacy-media-resources.generated";
+import { deviceChatResources } from "@/i18n/device-chat-resources";
 
 const zhCN = {
   app: { name: "小智管理控制台", subtitle: "新一代管理前端" },
@@ -108,6 +109,7 @@ const zhCN = {
       docker: { title: "独立构建", description: "Node LTS 多阶段镜像和可复用依赖缓存。" },
     },
   },
+  deviceChat: deviceChatResources.zhCN,
   modelCenter: modelCenterResources.zhCN,
   agentCenter: legacyAgentResources.zhCN,
   adminCenter: adminCenterResources.zhCN,
@@ -165,6 +167,7 @@ const zhTW = {
       docker: { title: "獨立建置", description: "Node LTS 多階段映像與可重用快取。" },
     },
   },
+  deviceChat: deviceChatResources.zhTW,
   modelCenter: modelCenterResources.zhTW,
   agentCenter: legacyAgentResources.zhTW,
   adminCenter: adminCenterResources.zhTW,
@@ -222,6 +225,7 @@ const en = {
       docker: { title: "Independent build", description: "Node LTS multi-stage image with reusable caches." },
     },
   },
+  deviceChat: deviceChatResources.en,
   modelCenter: modelCenterResources.en,
   agentCenter: legacyAgentResources.en,
   adminCenter: adminCenterResources.en,
@@ -268,6 +272,7 @@ const de = {
       docker: { title: "Eigener Build", description: "Mehrstufiges Node-LTS-Image mit Cache." },
     },
   },
+  deviceChat: deviceChatResources.de,
   modelCenter: modelCenterResources.de,
   agentCenter: legacyAgentResources.de,
   adminCenter: adminCenterResources.de,
@@ -310,6 +315,7 @@ const ptBR = {
       docker: { title: "Build independente", description: "Imagem Node LTS em múltiplos estágios com cache." },
     },
   },
+  deviceChat: deviceChatResources.ptBR,
   modelCenter: modelCenterResources.ptBR,
   agentCenter: legacyAgentResources.ptBR,
   adminCenter: adminCenterResources.ptBR,
@@ -352,6 +358,7 @@ const vi = {
       docker: { title: "Bản dựng độc lập", description: "Ảnh Node LTS nhiều giai đoạn có bộ nhớ đệm." },
     },
   },
+  deviceChat: deviceChatResources.vi,
   modelCenter: modelCenterResources.vi,
   agentCenter: legacyAgentResources.vi,
   adminCenter: adminCenterResources.vi,

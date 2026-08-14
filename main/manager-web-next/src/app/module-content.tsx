@@ -24,6 +24,9 @@ const DeviceManagementPage = lazy(async () => ({
   default: (await import("@/features/devices/device-management-page"))
     .DeviceManagementPage,
 }));
+const DeviceChatPage = lazy(async () => ({
+  default: (await import("@/features/devices/device-chat-page")).DeviceChatPage,
+}));
 const AddressBookPage = lazy(async () => ({
   default: (await import("@/features/devices/address-book-page")).AddressBookPage,
 }));
@@ -88,6 +91,7 @@ export function ModuleContent({ route }: { route: ModuleRoute }) {
   if (route.path === "/home") content = <AgentsPage />;
   else if (route.path === "/role-config") content = <AgentConfigPage />;
   else if (route.path === "/device-management") content = <DeviceManagementPage />;
+  else if (route.path === "/device-chat") content = <DeviceChatPage />;
   else if (route.path === "/address-book-management") content = <AddressBookPage />;
   else if (route.path === "/voice-print") content = <VoicePrintPage />;
   else if (route.path === "/agent-template-management") content = <AgentTemplatePage />;

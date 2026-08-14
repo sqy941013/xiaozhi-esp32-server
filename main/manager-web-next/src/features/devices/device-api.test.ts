@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestData } from "@/api/client";
 import {
   bindDevice,
+  createDeviceMemory,
+  createWebChatSession,
+  getDeviceMemories,
   getFirmwareTypes,
   updateAddressBookPermission,
   updateDevice,
@@ -56,6 +59,27 @@ describe("device API", () => {
       },
       method: "PUT",
       url: "/device/address-book/permission",
+    });
+  });
+
+  it("uses encoded, device-scoped web-chat and memory endpoints", async () => {
+    requestMock.mockResolvedValue(undefined);
+    await createWebChatSession("device/1");
+    await getDeviceMemories("device/1");
+    await createDeviceMemory("device/1", "likes tea");
+
+    expect(requestMock).toHaveBeenNthCalledWith(1, {
+      method: "POST",
+      url: "/device/device%2F1/web-chat/sessions",
+    });
+    expect(requestMock).toHaveBeenNthCalledWith(2, {
+      method: "GET",
+      url: "/device/device%2F1/memories",
+    });
+    expect(requestMock).toHaveBeenNthCalledWith(3, {
+      data: { content: "likes tea" },
+      method: "POST",
+      url: "/device/device%2F1/memories",
     });
   });
 });

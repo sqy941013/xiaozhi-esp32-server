@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from urllib.parse import parse_qs, urlparse
 
 import websockets
 from config.logger import setup_logging
@@ -35,8 +36,20 @@ from config.config_loader import get_config_from_api_async
 from core.auth import AuthManager, AuthenticationError
 from core.utils.modules_initialize import initialize_modules
 from core.utils.util import check_vad_update, check_asr_update
+from config.manage_api_client import redeem_web_chat_ticket
 
 TAG = __name__
+
+
+def parse_web_chat_request(request_path):
+    parsed_url = urlparse(request_path or "")
+    if parsed_url.path != "/xiaozhi/v1/web-chat":
+        return parsed_url, None
+    query_params = parse_qs(parsed_url.query, keep_blank_values=True)
+    tickets = query_params.get("ticket", [])
+    if len(tickets) != 1 or not tickets[0] or len(tickets[0]) > 128:
+        raise ValueError("invalid web chat ticket")
+    return parsed_url, tickets[0]
 
 
 class WebSocketServer:
@@ -79,18 +92,37 @@ class WebSocketServer:
             await asyncio.Future()
 
     async def _handle_connection(self, websocket: websockets.ServerConnection):
-        headers = dict(websocket.request.headers)
-        if headers.get("device-id", None) is None:
-            # 尝试从 URL 的查询参数中获取 device-id
-            from urllib.parse import parse_qs, urlparse
+        request_path = websocket.request.path or ""
+        try:
+            parsed_url, web_chat_ticket = parse_web_chat_request(request_path)
+        except ValueError:
+            await websocket.close(code=4401, reason="网页会话凭证无效")
+            return
+        is_web_chat = web_chat_ticket is not None
+        web_chat_context = None
 
+        headers = dict(websocket.request.headers)
+        if is_web_chat:
+            try:
+                web_chat_context = await redeem_web_chat_ticket(
+                    web_chat_ticket, headers.get("origin", "")
+                )
+                if not web_chat_context:
+                    raise AuthenticationError("Ticket redemption returned no context")
+            except Exception as error:
+                self.logger.bind(tag=TAG).warning(
+                    f"网页会话凭证兑换失败: {type(error).__name__}"
+                )
+                await websocket.close(code=4401, reason="网页会话凭证无效或已过期")
+                return
+
+        elif headers.get("device-id", None) is None:
+            # 尝试从 URL 的查询参数中获取 device-id
             # 从 WebSocket 请求中获取路径
-            request_path = websocket.request.path
             if not request_path:
                 self.logger.bind(tag=TAG).error("无法获取请求路径")
                 await websocket.close()
                 return
-            parsed_url = urlparse(request_path)
             query_params = parse_qs(parsed_url.query)
             if "device-id" not in query_params:
                 await websocket.send("端口正常，如需测试连接，请启动digital-human测试")
@@ -108,7 +140,8 @@ class WebSocketServer:
         """处理新连接，每次创建独立的ConnectionHandler"""
         # 先认证，后建立连接
         try:
-            await self._handle_auth(websocket)
+            if not is_web_chat:
+                await self._handle_auth(websocket)
         except AuthenticationError:
             await websocket.send("认证失败")
             await websocket.close()
@@ -122,6 +155,7 @@ class WebSocketServer:
             self._memory,
             self._intent,
             self,  # 传入server实例
+            web_chat_context=web_chat_context,
         )
         try:
             await handler.handle_connection(websocket)

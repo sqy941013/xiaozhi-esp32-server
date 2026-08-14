@@ -4,6 +4,8 @@ import type {
   BoundDevice,
   FirmwareType,
   ManualDeviceInput,
+  WebChatSession,
+  WebChatSessionStatus,
 } from "@/features/devices/types";
 
 export function getFirmwareTypes(): Promise<readonly FirmwareType[]> {
@@ -86,5 +88,50 @@ export function updateAddressBookPermission(input: {
     data: input,
     method: "PUT",
     url: "/device/address-book/permission",
+  });
+}
+
+export function createWebChatSession(deviceId: string): Promise<WebChatSession> {
+  return requestData({
+    method: "POST",
+    url: `/device/${encodeURIComponent(deviceId)}/web-chat/sessions`,
+  });
+}
+
+export function getWebChatSession(
+  deviceId: string,
+  sessionId: string,
+): Promise<WebChatSessionStatus> {
+  return requestData({
+    method: "GET",
+    url: `/device/${encodeURIComponent(deviceId)}/web-chat/sessions/${encodeURIComponent(sessionId)}`,
+  });
+}
+
+export function requestWebChatFinish(
+  deviceId: string,
+  sessionId: string,
+): Promise<WebChatSessionStatus> {
+  return requestData({
+    method: "POST",
+    url: `/device/${encodeURIComponent(deviceId)}/web-chat/sessions/${encodeURIComponent(sessionId)}/finish`,
+  });
+}
+
+export function getDeviceMemories(deviceId: string): Promise<unknown> {
+  return requestData({
+    method: "GET",
+    url: `/device/${encodeURIComponent(deviceId)}/memories`,
+  });
+}
+
+export function createDeviceMemory(
+  deviceId: string,
+  content: string,
+): Promise<unknown> {
+  return requestData({
+    data: { content },
+    method: "POST",
+    url: `/device/${encodeURIComponent(deviceId)}/memories`,
   });
 }

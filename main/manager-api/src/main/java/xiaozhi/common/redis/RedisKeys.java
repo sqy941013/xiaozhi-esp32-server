@@ -195,4 +195,24 @@ public class RedisKeys {
         return "device:address_book:all";
     }
 
+    public static String getWebChatTicketKey(String ticketDigest) {
+        return "webchat:ticket:" + ticketDigest;
+    }
+
+    public static String getWebChatSessionKey(String sessionId) {
+        return "webchat:session:" + sessionId;
+    }
+
+    public static String getWebChatSessionMutexKey(String sessionId) {
+        return "webchat:session-mutex:" + sessionId;
+    }
+
+    public static String getWebChatDeviceLockKey(String deviceId) {
+        return "webchat:device-lock:" + deviceId;
+    }
+
+    public static String getWebChatRateLimitKey(Long userId) {
+        return "webchat:rate:user:" + userId;
+    }
+
 }
