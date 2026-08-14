@@ -366,7 +366,18 @@ test("uploads, saves, downloads, and removes OTA firmware", async ({ page }) => 
     };
   });
   await row.getByRole("button", { name: "下载" }).click();
-  await expect.poll(() => page.evaluate(() => (window as Window & { __downloadHref?: string }).__downloadHref)).toBe("http://127.0.0.1:18013/xiaozhi/otaMag/download/firmware-token");
+  const expectedDownloadHref = new URL(
+    "/xiaozhi/otaMag/download/firmware-token",
+    page.url(),
+  ).href;
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as Window & { __downloadHref?: string }).__downloadHref,
+      ),
+    )
+    .toBe(expectedDownloadHref);
 
   await page.setViewportSize({ height: 844, width: 390 });
   await page.reload();
