@@ -61,9 +61,9 @@ services:
         http_proxy: ${http_proxy:-}
         https_proxy: ${https_proxy:-}
         no_proxy: ${no_proxy:-}
+    # Keep the two application services independent at startup: the Python
+    # service fetches its configuration from manager-api while booting.
     depends_on:
-      xiaozhi-esp32-server:
-        condition: service_healthy
       xiaozhi-esp32-server-db:
         condition: service_healthy
       xiaozhi-esp32-server-redis:
