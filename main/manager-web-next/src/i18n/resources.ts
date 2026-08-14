@@ -1,3 +1,5 @@
+import { modelCenterResources } from "@/i18n/model-center-resources";
+
 const zhCN = {
   app: { name: "小智管理控制台", subtitle: "新一代管理前端" },
   language: { label: "界面语言" },
@@ -101,6 +103,7 @@ const zhCN = {
       docker: { title: "独立构建", description: "Node LTS 多阶段镜像和可复用依赖缓存。" },
     },
   },
+  modelCenter: modelCenterResources.zhCN,
   error: { title: "页面加载失败", unexpected: "出现了未预期的错误。", backHome: "返回首页" },
 };
 
@@ -152,6 +155,7 @@ const zhTW = {
       docker: { title: "獨立建置", description: "Node LTS 多階段映像與可重用快取。" },
     },
   },
+  modelCenter: modelCenterResources.zhTW,
   error: { title: "頁面載入失敗", unexpected: "發生未預期的錯誤。", backHome: "返回首頁" },
 };
 
@@ -203,6 +207,7 @@ const en = {
       docker: { title: "Independent build", description: "Node LTS multi-stage image with reusable caches." },
     },
   },
+  modelCenter: modelCenterResources.en,
   error: { title: "Unable to load this page", unexpected: "An unexpected error occurred.", backHome: "Back home" },
 };
 
@@ -245,6 +250,7 @@ const de = {
       docker: { title: "Eigener Build", description: "Mehrstufiges Node-LTS-Image mit Cache." },
     },
   },
+  modelCenter: modelCenterResources.de,
   error: { title: "Seite konnte nicht geladen werden", unexpected: "Ein unerwarteter Fehler ist aufgetreten.", backHome: "Zur Startseite" },
 };
 
@@ -283,6 +289,7 @@ const ptBR = {
       docker: { title: "Build independente", description: "Imagem Node LTS em múltiplos estágios com cache." },
     },
   },
+  modelCenter: modelCenterResources.ptBR,
   error: { title: "Não foi possível carregar a página", unexpected: "Ocorreu um erro inesperado.", backHome: "Voltar ao início" },
 };
 
@@ -321,6 +328,7 @@ const vi = {
       docker: { title: "Bản dựng độc lập", description: "Ảnh Node LTS nhiều giai đoạn có bộ nhớ đệm." },
     },
   },
+  modelCenter: modelCenterResources.vi,
   error: { title: "Không thể tải trang", unexpected: "Đã xảy ra lỗi không mong muốn.", backHome: "Về trang chủ" },
 };
 
