@@ -75,6 +75,9 @@ async def get_config_from_api_async(config):
             "port": config["server"].get("port", ""),
             "http_port": config["server"].get("http_port", ""),
             "vision_explain": config["server"].get("vision_explain", ""),
+            "vision_device_bindings": config["server"].get(
+                "vision_device_bindings", {}
+            ),
             "auth_key": config["server"].get("auth_key", ""),
         }
     config_data["server"]["auth"] = {"enabled": auth_enabled}
