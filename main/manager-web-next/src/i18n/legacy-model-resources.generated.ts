@@ -1,4 +1,4 @@
-// Generated from the legacy Vue locale files. Run pnpm i18n:model:generate after locale changes.
+// Migration snapshot retained as React-owned locale data after the Vue source was removed.
 export const legacyModelResources = {
   "de": {
     "providerManagement": {

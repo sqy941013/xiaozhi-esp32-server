@@ -10,12 +10,14 @@ on:
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SM2FrontendCompatibilityTest.java"
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SensitiveDataUtilsTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImplTest.java"
+      - "main/manager-api/src/test/java/xiaozhi/modules/agent/service/impl/AgentSnapshotServiceImplTest.java"
       - "Dockerfile-web-next"
       - "Dockerfile-web"
       - "docs/docker/nginx.conf"
       - "docs/docker/start.sh"
       - "main/xiaozhi-server/docker-compose.source.yml"
       - "main/xiaozhi-server/source-deploy.sh"
+      - "main/xiaozhi-server/source-deploy.test.sh"
       - "main/xiaozhi-server/source.env.example"
       - "docs/docker-build.md"
       - "docs/frontend-react-migration.md"
@@ -31,12 +33,14 @@ on:
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SM2FrontendCompatibilityTest.java"
       - "main/manager-api/src/test/java/xiaozhi/common/utils/SensitiveDataUtilsTest.java"
       - "main/manager-api/src/test/java/xiaozhi/modules/model/service/impl/ModelConfigServiceImplTest.java"
+      - "main/manager-api/src/test/java/xiaozhi/modules/agent/service/impl/AgentSnapshotServiceImplTest.java"
       - "Dockerfile-web-next"
       - "Dockerfile-web"
       - "docs/docker/nginx.conf"
       - "docs/docker/start.sh"
       - "main/xiaozhi-server/docker-compose.source.yml"
       - "main/xiaozhi-server/source-deploy.sh"
+      - "main/xiaozhi-server/source-deploy.test.sh"
       - "main/xiaozhi-server/source.env.example"
       - "docs/docker-build.md"
       - "docs/frontend-react-migration.md"
@@ -64,7 +68,7 @@ jobs:
           cache: maven
 
       - name: Compile manager API and run compatibility tests
-        run: mvn -B -DskipTests=false -Dtest=SM2FrontendCompatibilityTest,SensitiveDataUtilsTest,ModelConfigServiceImplTest test
+        run: mvn -B -DskipTests=false -Dtest=SM2FrontendCompatibilityTest,SensitiveDataUtilsTest,ModelConfigServiceImplTest,AgentSnapshotServiceImplTest test
 
   quality:
     name: Lint, typecheck, test and build
@@ -125,7 +129,8 @@ jobs:
       - name: Validate deployment files
         if: matrix.name == 'preview'
         run: |
-          bash -n docs/docker/start.sh main/xiaozhi-server/source-deploy.sh
+          bash -n docs/docker/start.sh main/xiaozhi-server/source-deploy.sh main/xiaozhi-server/source-deploy.test.sh
+          bash main/xiaozhi-server/source-deploy.test.sh
           docker compose \
             --env-file main/xiaozhi-server/source.env.example \
             -f main/xiaozhi-server/docker-compose.source.yml \

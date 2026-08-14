@@ -17,10 +17,6 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "api:generate": "node scripts/generate-openapi.mjs",
-    "i18n:agent:generate": "node scripts/generate-agent-i18n.mjs",
-    "i18n:admin:generate": "node scripts/generate-admin-i18n.mjs",
-    "i18n:media:generate": "node scripts/generate-media-i18n.mjs",
-    "i18n:model:generate": "node scripts/generate-model-i18n.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {

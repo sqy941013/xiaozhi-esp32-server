@@ -7,7 +7,7 @@
 3.  [核心组件深度剖析](#3-核心组件深度剖析)
     *   [3.1. `xiaozhi-server` (核心AI引擎 - Python实现)](#31-xiaozhi-server-核心ai引擎---python实现)
     *   [3.2. `manager-api` (管理后端 - Java Spring Boot实现)](#32-manager-api-管理后端---java-spring-boot实现)
-    *   [3.3. `manager-web` (Web管理前端 - Vue.js实现)](#33-manager-web-web管理前端---vuejs实现)
+    *   [3.3. `manager-web-next` (Web管理前端 - React实现)](#33-manager-web-next-web管理前端---react实现)
     *   [3.4. `manager-mobile` (移动管理端 - uni-app+Vue3实现)](#34-manager-mobile-移动管理端---uni-appvue3实现)
     *   [3.5. `digital-human` (数字人测试模块 - Python+Web实现)](#35-digital-human-数字人测试模块---pythonweb实现)
 4.  [数据流与交互机制](#4-数据流与交互机制)
@@ -44,7 +44,7 @@
     *   从 `manager-api` 服务获取其详细的运行时操作配置。
 
 3.  **`manager-api` (管理后端 - Java实现):**
-    这是一个基于Java Spring Boot框架构建的应用程序，它为整个系统的管理和配置提供了一套安全的RESTful API。它不仅是 `manager-web` 控制台的后端支撑，也是 `xiaozhi-server` 的配置数据来源。其核心功能包括：
+    这是一个基于Java Spring Boot框架构建的应用程序，它为整个系统的管理和配置提供了一套安全的RESTful API。它不仅是 `manager-web-next` 控制台的后端支撑，也是 `xiaozhi-server` 的配置数据来源。其核心功能包括：
     *   为Web控制台提供用户认证（登录、权限验证）和用户账户管理功能。
     *   ESP32设备的注册、信息管理以及设备特定配置的维护。
     *   在**MySQL数据库**中持久化存储系统配置，例如用户选择的AI服务提供商、API密钥、设备参数、插件设置等。
@@ -52,17 +52,17 @@
     *   管理TTS音色选项、处理OTA（Over-The-Air）固件更新流程及相关元数据。
     *   利用 **Redis** 作为高速缓存，存储热点数据（如会话信息、频繁访问的配置），以提升API响应速度和系统整体性能。
 
-4.  **`manager-web` (Web控制面板 - Vue.js实现):**
-    这是一个基于Vue.js构建的单页应用（SPA），为系统管理员提供了一个图形化、用户友好的操作界面。其主要能力包括：
+4.  **`manager-web-next` (Web控制面板 - React实现):**
+    这是一个基于 React、TypeScript 和 Vite 构建的单页应用（SPA），为系统管理员提供图形化管理界面。其主要能力包括：
     *   便捷地配置 `xiaozhi-server` 所使用的各项AI服务（如ASR、LLM、TTS的提供商切换、参数调整）。
     *   管理平台用户账户、角色分配及权限控制。
     *   管理已注册的ESP32设备及其相关设置。
-    *   （潜在功能）监控系统运行状态、查看日志、进行故障排查等。
+    *   管理知识库、语音资源、OTA、系统参数、字典和服务端指令。
     *   与 `manager-api` 提供的所有后端管理功能进行全面的交互。
 
 5.  **`manager-mobile` (智控台移动版 - uni-app实现):**
     这是一个基于uni-app v3 + Vue 3 + Vite的跨端移动管理端，支持App（Android & iOS）和微信小程序。其主要能力包括：
-    *   提供移动设备上的便捷管理界面，与manager-web功能类似但针对移动端进行了优化。
+    *   提供移动设备上的便捷管理界面，与 `manager-web-next` 功能类似但针对移动端进行了优化。
     *   支持用户登录、设备管理、AI服务配置等核心功能。
     *   跨平台适配，一套代码可同时运行在iOS、Android和微信小程序上。
     *   基于alova + @alova/adapter-uniapp实现网络请求，与manager-api无缝集成。
@@ -73,20 +73,20 @@
     *   提供浏览器端的数字人测试页面，用于验证音频播放、接收和交互流程。
     *   集成本地唤醒词运行时，支持基于Sherpa-ONNX的关键词检测。
     *   通过事件桥将页面状态与本地运行时打通，便于调试唤醒词触发与交互效果。
-    *   作为独立模块与`xiaozhi-server`、`manager-web`、`manager-api`并列，便于单独开发和部署。
+    *   作为独立模块与 `xiaozhi-server`、`manager-web-next`、`manager-api` 并列，便于单独开发和部署。
 
 **高层交互流程概述:**
 
 *   **语音交互主线:** **ESP32设备**捕捉到用户语音后，通过**WebSocket**将音频数据实时传输给**`xiaozhi-server`**。`xiaozhi-server`完成一系列AI处理（VAD、ASR、LLM交互、TTS）后，再通过WebSocket将合成的语音回复发送回ESP32设备进行播放。所有与语音直接相关的实时交互均在此链路完成。
-*   **管理配置主线:** 管理员通过浏览器访问**`manager-web`**控制台。`manager-web`通过调用**`manager-api`**提供的**RESTful HTTP接口**来执行各种管理操作（如修改配置、管理用户或设备）。数据以JSON格式在两者间传递。
+*   **管理配置主线:** 管理员通过浏览器访问 **`manager-web-next`** 控制台。React 前端通过调用 **`manager-api`** 提供的 **RESTful HTTP 接口**执行配置、用户和设备等管理操作，数据以 JSON 格式传递。
 *   **配置同步:** **`xiaozhi-server`**在启动或特定更新机制触发时，会主动通过HTTP请求从**`manager-api`**拉取其最新的操作配置。这确保了管理员在Web界面上所做的配置更改能够及时有效地应用到核心AI引擎的运行中。
 
-这种**前后端分离、核心服务与管理服务分离**的架构设计，使得 `xiaozhi-server`能够专注于高效的实时AI处理任务，而 `manager-api` 和 `manager-web` 则共同提供了一个功能强大且易于使用的管理和配置平台。各组件职责清晰，有利于独立开发、测试、部署和扩展。
+这种**前后端分离、核心服务与管理服务分离**的架构设计，使得 `xiaozhi-server` 能够专注于高效的实时 AI 处理任务，而 `manager-api` 和 `manager-web-next` 共同提供管理与配置平台。各组件职责清晰，有利于独立开发、测试、部署和扩展。
 
 ```
 xiaozhi-esp32-server
   ├─ xiaozhi-server 8000 端口 Python语言开发 负责与esp32通信
-  ├─ manager-web 8001 端口 Node.js+Vue开发 负责提供控制台的web界面
+  ├─ manager-web-next React+TypeScript+Vite 负责提供控制台 Web 界面
   ├─ manager-api 8002 端口 Java语言开发 负责提供控制台的api
   ├─ manager-mobile 跨平台移动应用 uni-app+Vue3开发 负责提供移动版智控台管理
   └─ digital-human 数字人测试模块 Python+Web实现 负责本地测试页面、唤醒词运行时与事件桥
@@ -175,7 +175,7 @@ xiaozhi-esp32-server
 `manager-api` 组件是使用Java和Spring Boot框架构建的强大后端服务，作为整个`xiaozhi-esp32-server`生态系统的中央行政管理和配置中枢。
 
 *   **核心目标:**
-    *   为`manager-web`（Vue.js前端）提供一套安全、稳定、符合RESTful规范的API接口，使得管理员能够便捷地管理用户、设备、系统配置及其他相关资源。
+    *   为 `manager-web-next`（React 前端）提供安全、稳定、符合 RESTful 规范的 API，使管理员能够管理用户、设备、系统配置及其他资源。
     *   充当`xiaozhi-server`（Python核心AI引擎）的集中化配置数据提供者，允许`xiaozhi-server`实例在启动或运行时获取其最新的操作参数。
     *   持久化存储关键数据，例如：用户账户信息、设备注册详情、AI服务提供商配置（包括API密钥、选定的服务模型等）、TTS音色参数，以及OTA固件版本信息等。
 
@@ -242,83 +242,40 @@ xiaozhi-esp32-server
 
 ---
 
-### 3.3. `manager-web` (Web管理前端 - Vue.js实现)
+### 3.3. `manager-web-next` (Web管理前端 - React实现)
 
-`manager-web` 组件是一个采用 Vue.js 2 框架构建的单页应用 (SPA - Single Page Application)。它为系统管理员提供了一个功能丰富、交互友好的图形用户界面，用于全面管理和配置 `xiaozhi-esp32-server` 生态系统。
+`manager-web-next` 是使用 React 19、TypeScript 严格模式和 Vite 构建的单页应用，为管理员和普通用户提供完整的图形化控制台。正式 `Dockerfile-web` 会把它与 `manager-api` 打包到同一容器，由 Nginx 提供静态资源、SPA 深链接和 `/xiaozhi` API 反向代理。
 
-*   **核心目标:**
-    *   提供一个基于Web的集中式控制面板，供管理员进行系统操作与监控。
-    *   实现对 `xiaozhi-server` 中AI服务提供商（ASR、LLM、TTS等）及其相关API密钥或许可配置的便捷管理。
-    *   支持用户账户、角色及权限的精细化管理。
-    *   提供ESP32设备的注册、配置及状态查看功能。
-    *   允许管理员自定义TTS音色、管理OTA固件更新流程、调整系统级参数及字典数据等。
-    *   作为 `manager-api` 所暴露各项功能的图形化交互前端。
+*   **核心能力:**
+    *   登录、注册、找回密码、令牌续用、权限守卫和六语言切换。
+    *   智能体、设备、模板、通讯录、声纹、上下文、插件函数和快照管理。
+    *   LLM/ASR/TTS 等模型与供应器配置，以及音色、知识库、声音复刻和 OTA 管理。
+    *   用户、参数、字典、功能开关、替换词和服务端运维指令管理。
+    *   设备主题生成器、用户协议和隐私政策等兼容静态资源。
 
 *   **核心技术栈:**
-    *   **Vue.js 2:** 一个渐进式的JavaScript框架，用于构建用户界面。其核心特性包括声明式渲染、组件化系统、数据绑定等，非常适合构建复杂的SPA。
-    *   **Vue CLI (`@vue/cli-service`):** Vue.js的官方命令行工具，用于项目的快速搭建、开发服务器的运行（支持热模块替换HMR）、以及生产环境构建打包（内部集成并配置了Webpack）。
-    *   **Vue Router (`vue-router`):** Vue.js官方的路由管理器。它负责在SPA内部实现不同“页面”或视图组件之间的导航切换，而无需重新加载整个HTML页面，提供了流畅的用户体验。
-    *   **Vuex (`vuex`):** Vue.js官方的状态管理模式和库。它充当了应用中所有组件的“中央数据存储”，用于管理全局共享状态（例如当前登录用户信息、设备列表、应用配置等），特别适用于大型复杂应用。
-    *   **Element UI (`element-ui`):** 一个广受欢迎的基于Vue 2.0的桌面端UI组件库。它提供了大量预先设计和实现的组件（如表单、表格、对话框、导航菜单、按钮、提示等），帮助开发者快速构建出专业且一致的用户界面。
-    *   **JavaScript (ES6+):** 前端逻辑实现的主要编程语言，利用其现代特性进行开发。
-    *   **SCSS (Sassy CSS):** 一种CSS预处理器，它为CSS增加了变量、嵌套规则、混合(Mixin)、继承等高级特性，使得CSS代码更易于组织、维护和复用。
-    *   **HTTP客户端 (Flyio 或 Axios 通过 `vue-axios`):** 用于在浏览器端向 `manager-api` 后端发起异步HTTP（AJAX）请求，以获取数据或提交操作。
-    *   **Webpack:** 一个强大的模块打包工具（由Vue CLI在底层管理和配置）。它将项目中的各种资源（JavaScript文件、CSS、图片、字体等）视为模块，并将它们打包成浏览器可识别的静态文件。
-    *   **Workbox (通过 `workbox-webpack-plugin`):** Google开发的一个库，用于简化Service Worker的编写和PWA（Progressive Web App - 渐进式Web应用）的实现。它可以帮助生成Service Worker脚本，实现资源缓存、离线访问等功能。
-    *   **Opus库 (`opus-decoder`, `opus-recorder`):** 这些音频处理库表明前端可能具备一些直接在浏览器中处理Opus格式音频的能力，例如：用于测试麦克风输入、允许管理员录制自定义音频片段（可能用于TTS音色样本或语音指令测试），或播放在管理界面中预览的Opus编码音频。
+    *   **React 19 + TypeScript:** 组件与业务模型使用严格类型，业务页面按路由懒加载。
+    *   **Vite 8 + Tailwind CSS 4:** 提供快速开发、生产构建和原子化样式。
+    *   **shadcn/ui + Radix UI + Lucide:** 可维护的无障碍组件基础和统一图标。
+    *   **React Router Data Mode:** 分层处理公开、登录、权限和功能开关路由。
+    *   **TanStack Query + Axios:** 管理服务端状态，并统一处理 Spring Boot `Result<T>`、认证、错误和二进制响应。
+    *   **i18next:** 支持 `zh-CN`、`zh-TW`、`en`、`de`、`pt-BR` 和 `vi`。
+    *   **Vitest + Testing Library + Playwright:** 覆盖单元、组件与真实浏览器业务回归。
 
-*   **关键实现细节:**
+*   **开发与构建:**
+    *   进入 `main/manager-web-next` 后使用 Node 22 和 pnpm 11。
+    *   `pnpm dev` 启动开发服务；`VITE_DEV_API_TARGET` 可指定 manager-api 地址。
+    *   `pnpm check` 依次执行 ESLint、严格类型检查、Vitest 和生产构建。
+    *   `pnpm test:e2e` 执行 Playwright 浏览器测试。
+    *   `pnpm api:generate` 从 `/xiaozhi/v3/api-docs` 更新 OpenAPI TypeScript 类型。
 
-    1.  **单页应用 (SPA) 结构:**
-        *   整个前端应用加载一个主HTML文件 (`public/index.html`)。后续的所有页面切换和内容更新都在客户端由Vue Router动态完成，无需每次都从服务器请求新的HTML页面。这种模式能提供更快的页面加载速度和更流畅的交互体验。
-
-    2.  **组件化架构 (Component-Based Architecture):**
-        *   用户界面由一系列可复用的Vue组件 (`.vue` 单文件组件) 构成，形成一个组件树。这种方式提高了代码的模块化程度、可维护性和复用性。
-        *   **`src/main.js`:** 应用的入口JS文件。它负责创建和初始化根Vue实例，注册全局插件（如Vue Router, Vuex, Element UI），并把根Vue实例挂载到 `public/index.html` 中的某个DOM元素上（通常是 `#app`）。
-        *   **`src/App.vue`:** 应用的根组件。它通常定义了应用的基础布局结构（如包含导航栏、侧边栏、主内容区），并通过 `<router-view></router-view>` 标签来显示当前路由匹配到的视图组件。
-        *   **视图组件 (`src/views/`):** 这些组件代表了应用中的各个“页面”或主要功能区（例如 `Login.vue` 登录页, `DeviceManagement.vue` 设备管理页, `UserManagement.vue` 用户管理页, `ModelConfig.vue` 模型配置页）。它们通常由Vue Router直接映射。
-        *   **可复用UI组件 (`src/components/`):** 包含了在不同视图之间共享的、更小粒度的UI组件（例如 `HeaderBar.vue` 顶部导航栏, `AddDeviceDialog.vue` 添加设备对话框, `AudioPlayer.vue` 音频播放器组件）。
-
-    3.  **客户端路由 (`src/router/index.js`):**
-        *   Vue Router在此文件中进行配置，定义了应用的路由表。每个路由规则将一个特定的URL路径映射到一个视图组件。
-        *   常常包含**导航守卫 (Navigation Guards)**，例如 `beforeEach` 守卫，用于在路由跳转前执行逻辑，如检查用户是否已登录，如果未登录则重定向到登录页面，从而保护需要认证才能访问的页面。
-
-    4.  **状态管理 (`src/store/index.js`):**
-        *   Vuex被用来构建一个集中的状态管理中心（Store）。这个Store包含了：
-            *   **State:** 存储应用级别的共享数据（例如，当前登录用户的详细信息、从API获取的设备列表、系统配置等）。
-            *   **Getters:** 类似于Vue组件中的计算属性，用于从State派生出一些状态值，方便组件使用。
-            *   **Mutations:** **唯一**可以同步修改State中数据的方法。它们必须是同步函数。
-            *   **Actions:** 用于处理异步操作（如API调用）或封装多个Mutation提交。Actions会调用API，获取数据后，通过 `commit` 一个或多个Mutation来更新State。
-        *   例如，用户登录时，一个名为 `login` 的Action可能会被调用，它会向后端API发送登录请求，成功后获取到用户信息和token，然后 `commit` 一个名为 `SET_USER_INFO` 的Mutation来更新State中的用户信息和token。
-
-    5.  **API通信 (`src/apis/`):**
-        *   与 `manager-api` 后端的所有HTTP通信逻辑被封装在 `src/apis/` 目录下，通常会按照后端API的模块进行组织（例如 `src/apis/module/agent.js`, `src/apis/module/device.js`）。
-        *   每个模块导出一系列函数，每个函数对应一个具体的API请求。这些函数内部使用配置好的HTTP客户端实例 (例如，在 `src/apis/api.js` 或 `src/apis/httpRequest.js` 中统一配置Axios或Flyio实例，可能包含设置请求基地址、请求/响应拦截器等)。
-        *   **拦截器 (Interceptors):** HTTP客户端的请求拦截器常用于在每个请求发送前自动添加认证令牌（如JWT）；响应拦截器则可用于全局处理API错误（如权限不足、服务器错误）或对响应数据进行预处理。
-
-    6.  **样式与资源 (`src/styles/`, `src/assets/`):**
-        *   `Element UI` 提供了基础的组件样式。
-        *   `src/styles/global.scss` 文件用于定义全局共享的SCSS样式、变量、混合(Mixin)等。
-        *   Vue单文件组件内部的 `<style scoped>` 标签允许编写只作用于当前组件的局部样式。
-        *   `src/assets/` 目录存放图片、字体等静态资源。
-
-    7.  **构建与PWA特性:**
-        *   Vue CLI通过Webpack将所有代码和资源打包成优化的静态文件，用于生产部署。
-        *   `workbox-webpack-plugin` 的使用（体现在 `service-worker.js` 和 `registerServiceWorker.js` 文件）表明项目集成了Service Worker技术。Service Worker可以拦截网络请求，实现前端资源的智能缓存（从而加快后续访问速度），甚至在网络断开时提供一定的离线访问能力，是PWA的核心技术之一。
-
-    8.  **环境配置 (`.env`系列文件):**
-        *   项目根目录下的 `.env` (以及 `.env.development`, `.env.production` 等) 文件用于定义环境变量。这些变量（例如 `VUE_APP_API_BASE_URL` 来指定 `manager-api` 的基础URL）可以在应用代码中通过 `process.env.VUE_APP_XXX` 的形式访问，从而允许为不同构建环境（开发、测试、生产）配置不同的参数。
-
-`manager-web` 通过这些技术的综合运用，构建了一个功能强大、易于维护且用户体验良好的管理界面，为 `xiaozhi-esp32-server` 系统的配置和监控提供了坚实的前端支持。
-
----
-
+旧 Vue 2 源码已在 React 正式切流、生产回归和升级/回滚演练完成后移除。迁移记录、兼容约束和验收结果见 `docs/frontend-react-migration.md`。
 ### 3.4. `manager-mobile` (智控台移动版 - uni-app实现)
 
 `manager-mobile` 组件是一个基于uni-app v3 + Vue 3 + Vite的跨端移动管理端，支持App（Android & iOS）和微信小程序。它为系统管理员提供了移动端的管理界面，使得管理操作更加便捷。
 
 *   **核心目标:**
-    *   提供移动设备上的便捷管理界面，与manager-web功能类似但针对移动端进行了优化。
+    *   提供移动设备上的便捷管理界面，与 `manager-web-next` 功能类似但针对移动端进行了优化。
     *   支持用户登录、设备管理、AI服务配置等核心功能。
     *   跨平台适配，一套代码可同时运行在iOS、Android和微信小程序上。
     *   为移动用户提供流畅、高效的管理体验。
@@ -463,18 +420,18 @@ xiaozhi-esp32-server
     *   **Server -> ESP32:** 服务器可能发送控制指令给设备（如“开始监听”、“停止监听”、调整灵敏度、下发特定配置参数）。
     *   `core/handle/abortHandle.py`（处理中断请求）、`core/handle/reportHandle.py`（处理设备报告）等模块负责解析和响应这些控制/状态消息。
 
-**4.2.管理与配置流程 (`manager-web` <-> `manager-api` <-> `xiaozhi-server`)**
+**4.2.管理与配置流程 (`manager-web-next` <-> `manager-api` <-> `xiaozhi-server`)**
 
 此流程主要依赖于基于HTTP/HTTPS的RESTful API进行请求-响应式的交互。
 
-*   **管理员UI后端交互 (`manager-web` -> `manager-api`):**
-    *   当管理员在`manager-web`界面执行操作时（例如保存一项配置、添加一个新用户、注册一台ESP32设备）：
-        *   Vue.js前端应用 (`manager-web`) 会通过其API封装模块（位于`src/apis/module/`）向`manager-api`的对应REST API端点发起异步HTTP请求（通常是GET, POST, PUT, DELETE）。
+*   **管理员 UI 后端交互 (`manager-web-next` -> `manager-api`):**
+    *   当管理员在 `manager-web-next` 界面执行操作时（例如保存配置、添加用户、注册 ESP32 设备）：
+        *   React 前端通过按业务域组织的 API 模块向 `manager-api` 的 REST 端点发起 GET、POST、PUT 或 DELETE 请求。
         *   请求体和响应体通常使用JSON格式。
         *   `manager-api`中的`@RestController`类接收这些请求。**Apache Shiro**框架会首先对请求进行认证和授权检查。
         *   通过验证后，Controller将请求分发给相应的Service层处理业务逻辑。Service层可能会与MySQL数据库（通过MyBatis-Plus）交互，并可能利用Redis进行数据缓存。
-        *   处理完成后，`manager-api`向`manager-web`返回一个JSON格式的HTTP响应。
-        *   `manager-web`根据响应结果更新其Vuex状态存储和用户界面显示。
+        *   处理完成后，`manager-api` 向 `manager-web-next` 返回 JSON 格式的 HTTP 响应。
+        *   `manager-web-next` 通过 TanStack Query 更新服务端状态缓存和用户界面。
 
 *   **配置同步 (`manager-api` -> `xiaozhi-server`):**
     *   `xiaozhi-server`的运行依赖于从`manager-api`获取的动态配置（例如当前选用的AI服务提供商及其API密钥）。
@@ -483,7 +440,7 @@ xiaozhi-esp32-server
     *   `xiaozhi-server`接收到配置后，会更新其内部状态，并可能重新初始化相关的AI服务模块，以使新配置生效。
 
 *   **OTA固件更新流程 (概念性描述):**
-    *   管理员通过`manager-web`界面上传新的ESP32固件包到`manager-api`的特定端点。
+    *   管理员通过 `manager-web-next` 界面上传新的 ESP32 固件包到 `manager-api` 的特定端点。
     *   `manager-api`将固件文件存储起来，并记录相关元数据（版本号、适用设备型号等）。
     *   当管理员触发对特定设备的OTA更新时：
         *   `manager-api`可能会通知`xiaozhi-server`（具体通知机制可能是一个轮询检查点，或`xiaozhi-server`暴露一个接收更新通知的API，或者更松耦合的如消息队列）。
@@ -493,7 +450,7 @@ xiaozhi-esp32-server
 **4.3. 主要协议总结:**
 
 *   **WebSocket:** 被选用于ESP32与`xiaozhi-server`之间的通信链路，因为它非常适合实时、低延迟、双向的数据流传输（尤其是音频），以及异步控制消息的传递。
-*   **RESTful APIs (基于HTTP/HTTPS，通常使用JSON作为数据交换格式):** 这是Web服务间通信的标准方式。用于`manager-web`（客户端）与`manager-api`（服务器）之间的请求-响应交互，也用于`xiaozhi-server`（作为客户端）从`manager-api`（作为服务器）拉取配置信息。其无状态特性、广泛的库支持和易于理解的语义使其成为此类交互的理想选择。
+*   **RESTful APIs (基于HTTP/HTTPS，通常使用JSON作为数据交换格式):** 这是Web服务间通信的标准方式。用于 `manager-web-next`（客户端）与 `manager-api`（服务器）之间的请求-响应交互，也用于 `xiaozhi-server`（作为客户端）从 `manager-api`（作为服务器）拉取配置信息。其无状态特性、广泛的库支持和易于理解的语义使其成为此类交互的理想选择。
 
 这种多协议并用的通信策略，确保了系统内不同类型的交互需求都能得到高效和恰当的处理，兼顾了实时性和标准化的请求-响应模式。
 
@@ -519,7 +476,7 @@ xiaozhi-esp32-server
     *   内置对Home Assistant集成的支持。
 6.  **物联网设备控制:**
     *   设计用于通过语音命令管理和控制智能家居设备及其他物联网硬件，并利用插件系统。
-7.  **基于Web的管理控制台 (`manager-web` & `manager-api`):**
+7.  **基于Web的管理控制台 (`manager-web-next` & `manager-api`):**
     *   提供全面的图形界面，用于：
         *   系统配置（AI服务选择、API密钥、操作参数）。
         *   基于角色的访问控制的用户管理。
@@ -535,8 +492,8 @@ xiaozhi-esp32-server
     *   根据MIT许可证授权，鼓励透明、协作和社区贡献。
 11. **经济高效的解决方案:**
     *   提供“入门全免费设置”路径，利用AI服务的免费套餐或本地模型，使其易于进行实验和个人项目。
-12. **渐进式Web应用 (PWA) 特性:**
-    *   `manager-web`控制面板包含Service Worker集成，以增强缓存和潜在的离线访问能力。
+12. **现代前端交付:**
+    *   `manager-web-next` 通过路由懒加载、哈希静态资源长期缓存、入口禁用缓存和 Nginx SPA 回退兼顾加载性能与升级一致性。
 13. **详细的API文档:**
     *   `manager-api`通过Knife4j提供OpenAPI (Swagger) 文档，以便清晰理解和测试其RESTful端点。
 
@@ -554,11 +511,11 @@ xiaozhi-esp32-server
 
 1.  **基于Docker的部署:**
     *   **简化安装 (仅`xiaozhi-server`):** 此选项仅部署核心的基于Python的`xiaozhi-server`。它适用于主要需要语音AI处理能力和IoT控制，而不需要完整Web管理界面和数据库支持功能（如OTA）的用户。在此模式下，配置通常通过本地文件（`config.yaml`）管理，但如果需要，仍可将其指向一个已存在的`manager-api`实例。
-    *   **全模块安装 (所有组件):** 此方案部署所有核心组件：`xiaozhi-server`、基于Java的`manager-api`、以及基于Vue.js的`manager-web`，同时还包括所需的数据库服务（MySQL和Redis）。这提供了完整的系统体验，包括用于全面配置和管理的Web控制面板。
-    *   项目为每个服务提供了`Dockerfile`定义，并使用`docker-compose.yml`文件（例如`docker-compose.yml`用于基础版，`docker-compose_all.yml`用于全功能版）来编排和管理多容器的部署。此外，还可能提供一个`docker-setup.sh`脚本来辅助自动化部分Docker环境的搭建工作。
+    *   **全模块安装 (所有组件):** 此方案部署 `xiaozhi-server`、基于 Java 的 `manager-api`、React `manager-web-next`、MySQL 和 Redis，提供完整的 Web 管理体验。
+    *   源码部署使用 `main/xiaozhi-server/docker-compose.source.yml`；`source-deploy.sh` 在升级前备份数据库，构建不可变本地镜像，只替换应用容器并等待健康，且支持显式回滚。
 
 2.  **源代码部署:**
-    *   这种方法需要为每个组件手动设置相应的开发环境：Python环境用于`xiaozhi-server`，Java/Maven环境用于`manager-api`，Node.js/Vue CLI环境用于`manager-web`。
+    *   这种方法需要为每个组件手动设置相应的开发环境：Python 环境用于 `xiaozhi-server`，Java 21/Maven 用于 `manager-api`，Node 22/pnpm 用于 `manager-web-next`。
     *   对于全模块安装，还需要手动安装和配置MySQL及Redis数据库服务。
     *   这种方式通常用于项目开发、深度定制、调试，或者在对环境有特殊要求的生产场景中。
 
@@ -569,7 +526,7 @@ xiaozhi-esp32-server
 1.  **`xiaozhi-server` 配置:**
     *   **本地`config.yaml`:** 位于`xiaozhi-server`根目录下的一个主要的YAML格式配置文件。它定义了服务器端口、选定的AI服务提供商（ASR、LLM、TTS、VAD、意图识别、记忆模块等）、它们各自的API密钥或模型路径、插件配置以及日志级别等。
     *   **通过`manager-api`进行远程配置:** `xiaozhi-server`被设计为可以从`manager-api`获取其运行配置。从`manager-api`获取的设置通常会覆盖本地`config.yaml`中的同名设置。这带来了两大好处：
-        *   **集中管理:** 所有配置都可以通过`manager-web`界面进行统一管理。
+        *   **集中管理:** 所有配置都可以通过 `manager-web-next` 界面进行统一管理。
         *   **动态更新:** `xiaozhi-server`可以刷新其配置并重新初始化AI模块，而无需完全重启服务。
     *   `xiaozhi-server`中的`config/config_loader.py`和`config/manage_api_client.py`负责处理配置的加载、合并及从`manager-api`拉取的逻辑。
 
@@ -577,16 +534,16 @@ xiaozhi-esp32-server
     *   作为一个Spring Boot应用，其配置主要通过位于`src/main/resources`目录下的`application.properties`或`application.yml`文件进行管理。
     *   关键配置项包括：数据库连接信息（MySQL的URL、用户名、密码）、Redis服务器地址和端口、应用服务端口（默认为8002）、Apache Shiro安全相关的设置，以及任何集成的第三方服务（如阿里云短信）的配置参数。
 
-3.  **`manager-web` 配置:**
-    *   Vue.js前端应用的环境特定设置通过项目根目录下的`.env`系列文件（例如`.env`, `.env.development`, `.env.production`）进行管理。
-    *   这里最关键的配置通常是`manager-api`后端的API基础URL地址 (例如 `VUE_APP_API_BASE_URL`)，前端应用将向此地址发送所有API请求。
+3.  **`manager-web-next` 配置:**
+    *   正式容器默认使用同源 `/xiaozhi` API，无需额外配置；开发环境可通过 `VITE_DEV_API_TARGET` 指定 manager-api 代理目标。
+    *   非根路径部署可设置 `VITE_PUBLIC_PATH`，独立 API 地址可设置 `VITE_API_BASE_URL`。
 
 4.  **预定义的配置方案:**
     *   项目文档（通常是README）中会推荐一些常见的配置组合，例如：
         *   **“入门全免费设置”:** 该方案旨在利用云AI服务的免费套餐额度或完全免费的本地模型，以最大程度地降低用户的初始使用成本和运营费用。
         *   **“全流式配置”:** 该方案优先考虑系统的响应速度和交互的流畅性，通常会选用支持流式处理的（可能付费的）AI服务。
-    *   这些预定义方案为用户在`xiaozhi-server`中配置AI服务提供商（通过`manager-web`界面或直接修改`config.yaml`）提供了指导。
+    *   这些预定义方案为用户在 `xiaozhi-server` 中配置 AI 服务提供商（通过 `manager-web-next` 界面或直接修改 `config.yaml`）提供了指导。
 
-在全模块部署的情况下，推荐使用`manager-web`控制面板作为大多数配置任务的主要操作界面，因为它提供了一种用户友好的方式来管理由`manager-api`持久化并最终由`xiaozhi-server`使用的各项设置。
+在全模块部署的情况下，推荐使用 `manager-web-next` 控制面板作为大多数配置任务的主要操作界面，因为它能够管理由 `manager-api` 持久化并最终由 `xiaozhi-server` 使用的各项设置。
 
 ---
