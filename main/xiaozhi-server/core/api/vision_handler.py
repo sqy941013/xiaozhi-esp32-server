@@ -7,10 +7,7 @@ from core.utils.util import get_vision_url, is_valid_image_file
 from core.utils.vllm import create_instance
 from config.config_loader import get_private_config_from_api
 from core.utils.auth import AuthToken
-from core.api.vision_device_bindings import (
-    VisionDeviceBindings,
-    normalize_device_id,
-)
+from core.api.vision_device_bindings import normalize_device_id
 import base64
 from typing import Tuple, Optional
 from plugins_func.register import Action
@@ -26,9 +23,6 @@ class VisionHandler(BaseHandler):
         super().__init__(config)
         # 初始化认证工具
         self.auth = AuthToken(config["server"]["auth_key"])
-        self.vision_device_bindings = VisionDeviceBindings(
-            config["server"].get("vision_device_bindings", {})
-        )
 
     def _create_error_response(self, message: str) -> dict:
         """创建统一的错误响应格式"""
@@ -67,43 +61,50 @@ class VisionHandler(BaseHandler):
                 )
                 return response
 
-            # 获取请求头信息
-            device_id = request.headers.get("Device-Id", "")
+            # 视觉请求使用已验证 Token 中的主控设备身份。部分局域网固件
+            # 不发送 Device-Id 请求头，因此不再对该请求头做二次身份校验。
             client_id = request.headers.get("Client-Id", "")
-            controller_device_id = (
-                self.vision_device_bindings.resolve_controller_device_id(
-                    token_device_id, device_id
-                )
-            )
-            if controller_device_id is None:
-                self.logger.bind(tag=TAG).warning(
-                    "视觉接口设备身份不匹配: "
-                    f"token_device_id={normalize_device_id(token_device_id) or '<empty>'}, "
-                    f"request_device_id={normalize_device_id(device_id) or '<empty>'}"
-                )
-                raise ValueError("设备ID与token不匹配")
-            if normalize_device_id(device_id) != controller_device_id:
-                self.logger.bind(tag=TAG).info(
-                    f"允许已绑定摄像头 {normalize_device_id(device_id)} "
-                    f"使用主控设备 {controller_device_id} 的视觉配置"
-                )
-            # 解析multipart/form-data请求
+            controller_device_id = normalize_device_id(token_device_id)
+            if not controller_device_id:
+                raise ValueError("认证token中缺少设备ID")
+            # 解析 multipart/form-data。不同固件发送字段的顺序并不一致，
+            # 因此按字段名称、内容类型和图片魔数识别，而不是假定问题在前。
             reader = await request.multipart()
+            question = None
+            image_data = None
+            while True:
+                field = await reader.next()
+                if field is None:
+                    break
 
-            # 读取question字段
-            question_field = await reader.next()
-            if question_field is None:
+                field_data = await field.read()
+                field_name = str(getattr(field, "name", "") or "").lower()
+                filename = getattr(field, "filename", None)
+                headers = getattr(field, "headers", {}) or {}
+                content_type = str(headers.get("Content-Type", "")).lower()
+                is_image_field = (
+                    field_name in {"file", "image", "photo"}
+                    or bool(filename)
+                    or content_type.startswith("image/")
+                    or is_valid_image_file(field_data)
+                )
+
+                if is_image_field:
+                    if image_data is None:
+                        image_data = field_data
+                    continue
+
+                if field_name in {"question", "prompt", "text"} or question is None:
+                    try:
+                        question = field_data.decode("utf-8")
+                    except UnicodeDecodeError as error:
+                        raise ValueError("问题字段不是有效的UTF-8文本") from error
+
+            if question is None:
                 raise ValueError("缺少问题字段")
-            question = await question_field.text()
-            self.logger.bind(tag=TAG).debug(f"Question: {question}")
-
-            # 读取图片文件
-            image_field = await reader.next()
-            if image_field is None:
+            if image_data is None:
                 raise ValueError("缺少图片文件")
-
-            # 读取图片数据
-            image_data = await image_field.read()
+            self.logger.bind(tag=TAG).debug(f"Question: {question}")
             if not image_data:
                 raise ValueError("图片数据为空")
 

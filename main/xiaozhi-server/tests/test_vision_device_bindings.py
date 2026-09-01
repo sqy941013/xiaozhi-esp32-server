@@ -80,9 +80,22 @@ class VisionDeviceBindingsTest(unittest.TestCase):
 
 
 class VisionHandlerBindingTest(unittest.IsolatedAsyncioTestCase):
-    async def _run_bound_camera_request(self, client_id):
+    async def test_invalid_token_is_still_rejected(self):
+        handler = object.__new__(VisionHandler)
+        handler._verify_auth_token = Mock(return_value=(False, None))
+        handler._add_cors_headers = Mock()
+        request = SimpleNamespace(headers={}, multipart=AsyncMock())
+
+        response = await VisionHandler.handle_post(handler, request)
+
+        self.assertEqual(401, response.status)
+        self.assertEqual(False, json.loads(response.text)["success"])
+        request.multipart.assert_not_awaited()
+
+    async def _run_camera_request(
+        self, client_id, request_device_id=None, image_first=False
+    ):
         controller_id = "44:1b:f6:fe:22:00"
-        camera_id = "44:1b:f6:d8:de:00"
         base_config = {
             "read_config_from_api": True,
             "selected_module": {},
@@ -96,9 +109,6 @@ class VisionHandlerBindingTest(unittest.IsolatedAsyncioTestCase):
         handler = object.__new__(VisionHandler)
         handler.config = base_config
         handler.auth = Mock()
-        handler.vision_device_bindings = VisionDeviceBindings(
-            {controller_id: [camera_id]}
-        )
         handler._verify_auth_token = Mock(return_value=(True, controller_id))
         handler._add_cors_headers = Mock()
         handler.logger = SimpleNamespace(
@@ -107,13 +117,31 @@ class VisionHandlerBindingTest(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        question_field = SimpleNamespace(text=AsyncMock(return_value="画面里有什么"))
-        image_field = SimpleNamespace(read=AsyncMock(return_value=b"test-image"))
-        reader = SimpleNamespace(
-            next=AsyncMock(side_effect=[question_field, image_field])
+        question_field = SimpleNamespace(
+            name="question",
+            filename=None,
+            headers={},
+            read=AsyncMock(return_value="画面里有什么".encode("utf-8")),
         )
+        image_field = SimpleNamespace(
+            name="file",
+            filename="photo.jpg",
+            headers={"Content-Type": "image/jpeg"},
+            read=AsyncMock(return_value=b"test-image"),
+        )
+        fields = (
+            [image_field, question_field]
+            if image_first
+            else [question_field, image_field]
+        )
+        reader = SimpleNamespace(
+            next=AsyncMock(side_effect=[*fields, None])
+        )
+        headers = {"Client-Id": client_id}
+        if request_device_id is not None:
+            headers["Device-Id"] = request_device_id
         request = SimpleNamespace(
-            headers={"Device-Id": camera_id, "Client-Id": client_id},
+            headers=headers,
             multipart=AsyncMock(return_value=reader),
         )
         vllm = SimpleNamespace(response=Mock(return_value="测试画面"))
@@ -124,7 +152,10 @@ class VisionHandlerBindingTest(unittest.IsolatedAsyncioTestCase):
                 new_callable=AsyncMock,
                 return_value=private_config,
             ) as get_private_config,
-            patch("core.api.vision_handler.is_valid_image_file", return_value=True),
+            patch(
+                "core.api.vision_handler.is_valid_image_file",
+                side_effect=lambda data: data == b"test-image",
+            ),
             patch("core.api.vision_handler.create_instance", return_value=vllm),
         ):
             response = await VisionHandler.handle_post(handler, request)
@@ -133,9 +164,25 @@ class VisionHandlerBindingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(True, json.loads(response.text)["success"])
         return get_private_config, base_config, controller_id
 
-    async def test_bound_camera_uses_controller_identity_for_model_lookup(self):
+    async def test_missing_device_id_uses_token_identity_for_model_lookup(self):
         get_private_config, base_config, controller_id = (
-            await self._run_bound_camera_request("camera-client")
+            await self._run_camera_request("camera-client")
+        )
+        get_private_config.assert_awaited_once_with(
+            base_config, controller_id, "camera-client"
+        )
+
+    async def test_request_device_id_is_not_compared_with_token_identity(self):
+        get_private_config, base_config, controller_id = await self._run_camera_request(
+            "camera-client", "unrelated-camera-id"
+        )
+        get_private_config.assert_awaited_once_with(
+            base_config, controller_id, "camera-client"
+        )
+
+    async def test_image_first_multipart_from_device_firmware_is_supported(self):
+        get_private_config, base_config, controller_id = await self._run_camera_request(
+            "camera-client", image_first=True
         )
         get_private_config.assert_awaited_once_with(
             base_config, controller_id, "camera-client"
@@ -143,7 +190,7 @@ class VisionHandlerBindingTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_missing_camera_client_id_falls_back_to_controller_id(self):
         get_private_config, base_config, controller_id = (
-            await self._run_bound_camera_request("")
+            await self._run_camera_request("")
         )
         get_private_config.assert_awaited_once_with(
             base_config, controller_id, controller_id
