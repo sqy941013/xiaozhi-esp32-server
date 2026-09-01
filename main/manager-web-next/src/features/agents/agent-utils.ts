@@ -17,6 +17,7 @@ const SUPPORTED_PLUGIN_FIELD_TYPES = new Set<PluginFieldType>([
   "json",
   "number",
   "password",
+  "password_array",
   "string",
 ]);
 

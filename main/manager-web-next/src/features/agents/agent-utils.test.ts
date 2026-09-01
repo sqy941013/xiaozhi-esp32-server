@@ -23,8 +23,9 @@ describe("agent configuration utilities", () => {
   });
 
   it("parses typed plugin fields while rejecting malformed definitions", () => {
-    expect(parsePluginFields('[{"key":"enabled","type":"bool"},{"key":"limit","type":"integer"}]')).toEqual([
+    expect(parsePluginFields('[{"key":"enabled","type":"bool"},{"key":"keys","type":"password_array"},{"key":"limit","type":"integer"}]')).toEqual([
       { default: undefined, key: "enabled", label: "enabled", remark: undefined, type: "bool" },
+      { default: undefined, key: "keys", label: "keys", remark: undefined, type: "password_array" },
       { default: undefined, key: "limit", label: "limit", remark: undefined, type: "string" },
     ]);
     expect(parsePluginFields("not-json")).toEqual([]);
