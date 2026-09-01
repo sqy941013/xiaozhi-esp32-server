@@ -16,6 +16,7 @@ cp source.env.example .env
 ```dotenv
 XIAOZHI_SOURCE_DIR=/absolute/path/to/xiaozhi-esp32-server
 XIAOZHI_RUNTIME_DIR=/mnt/store/xiaozhi-server-all
+XIAOZHI_MUSIC_DIR=/absolute/path/to/music
 XIAOZHI_SERVER_REPOSITORY=my-local/xiaozhi-esp32-server
 XIAOZHI_WEB_REPOSITORY=my-local/xiaozhi-esp32-server-web
 XIAOZHI_WS_PORT=18000
@@ -27,10 +28,13 @@ XIAOZHI_VISION_PORT=18003
 
 ```text
 data/.config.yaml
+music/
 models/SenseVoiceSmall/model.pt
 mysql/data/
 uploadfile/
 ```
+
+`XIAOZHI_MUSIC_DIR` 会以只读方式挂载到服务端的音乐目录。将 `.mp3`、`.wav` 或 `.p3` 文件放入该目录后，`play_music` 插件即可扫描并播放；只读挂载可以避免容器误删宿主机音乐文件。
 
 不要把真实密码、API 密钥、`.config.yaml` 或数据库目录提交到 Git。
 
