@@ -134,6 +134,20 @@ test("masks secrets and serializes typed parameters", async ({ page }) => {
       remark: "模型密钥",
       valueType: "string",
     },
+    {
+      id: 52,
+      paramCode: "server.auth.enabled",
+      paramValue: "true",
+      remark: "服务鉴权",
+      valueType: "boolean",
+    },
+    {
+      id: 53,
+      paramCode: "plugins.mem0.base_url",
+      paramValue: "http://mem0:8000",
+      remark: "记忆服务",
+      valueType: "string",
+    },
   ];
   let createPayload: Record<string, unknown> | undefined;
   let deletePayload: unknown;
@@ -155,6 +169,13 @@ test("masks secrets and serializes typed parameters", async ({ page }) => {
   });
 
   await page.goto("/params-management");
+  await expect(page.getByRole("button", { name: /服务端\s*1/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /插件\s*1/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /通用\s*1/ })).toBeVisible();
+  await page.getByRole("button", { name: /插件\s*1/ }).click();
+  await expect(page.getByRole("row").filter({ hasText: "plugins.mem0.base_url" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "openai.api_key" })).toHaveCount(0);
+  await page.getByRole("button", { name: /全部\s*3/ }).click();
   const secretRow = page.getByRole("row").filter({ hasText: "openai.api_key" });
   await expect(secretRow.getByText("sk****34")).toBeVisible();
   await expect(secretRow.getByText("sk-secret-1234")).toHaveCount(0);

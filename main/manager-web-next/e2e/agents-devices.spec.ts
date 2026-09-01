@@ -301,7 +301,7 @@ test("binds, adds, edits, and unbinds devices without losing zero-valued switche
 
   await firstRow.getByRole("button", { name: "编辑设备" }).click();
   const editDialog = page.getByRole("dialog", { name: "编辑设备" });
-  await editDialog.getByLabel("备注").fill("客厅新音箱");
+  await editDialog.getByLabel("设备别名").fill("客厅新音箱");
   await editDialog.getByRole("button", { name: "保存" }).click();
   await expect.poll(() => mutations.some((item) => JSON.stringify(item.body) === '{"alias":"客厅新音箱"}')).toBe(true);
 
