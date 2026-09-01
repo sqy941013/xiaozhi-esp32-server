@@ -368,6 +368,16 @@ ASR:
     # 识别语种：auto 自动检测；如需限制只识别中文可设为 zh，避免中文短句误判为韩文等。
     # SenseVoice 支持 zh、en、ja、ko、yue 等语种标记。
     language: auto
+  FireRedASR2:
+    # FireRedASR2-AED 自托管 REST 服务地址。也可以直接填写完整的
+    # /v1/audio/transcriptions 地址。
+    type: firered_asr2
+    base_url: http://127.0.0.1:8002
+    api_key: ""
+    return_timestamp: false
+    connect_timeout: 3
+    request_timeout: 30
+    output_dir: tmp/
   FunASRServer:
     # 独立部署FunASR，使用FunASR的API服务，只需要五句话
     # 第一句：mkdir -p ./funasr-runtime-resources/models
