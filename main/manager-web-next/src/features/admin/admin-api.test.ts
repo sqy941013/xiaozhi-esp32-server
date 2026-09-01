@@ -6,6 +6,7 @@ import {
   deleteReplacementFiles,
   downloadReplacementFile,
   emitServerAction,
+  getAllParams,
   getDictData,
   getParams,
   resetUserPassword,
@@ -42,6 +43,33 @@ describe("administration API", () => {
     expect(requestMock).toHaveBeenLastCalledWith({
       method: "PUT",
       url: "/admin/users/12%2F34",
+    });
+  });
+
+  it("loads every parameter page for namespace grouping", async () => {
+    requestMock
+      .mockResolvedValueOnce({
+        list: Array.from({ length: 500 }, (_, id) => ({ id, paramCode: `server.item.${id}` })),
+        total: 501,
+      })
+      .mockResolvedValueOnce({
+        list: [{ id: 500, paramCode: "plugins.mem0.enabled" }],
+        total: 501,
+      });
+
+    const result = await getAllParams();
+
+    expect(result.list).toHaveLength(501);
+    expect(result.total).toBe(501);
+    expect(requestMock).toHaveBeenNthCalledWith(1, {
+      method: "GET",
+      params: { limit: 500, page: 1, paramCode: "" },
+      url: "/admin/params/page",
+    });
+    expect(requestMock).toHaveBeenNthCalledWith(2, {
+      method: "GET",
+      params: { limit: 500, page: 2, paramCode: "" },
+      url: "/admin/params/page",
     });
   });
 

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildParamSections,
   buildFeatureMenu,
+  filterParams,
   formatParamValue,
+  getParamSubGroup,
+  getParamTopGroup,
   isSensitiveParamCode,
   maskSensitiveValue,
   replacementDownloadName,
@@ -32,6 +36,33 @@ describe("administration utilities", () => {
     expect(() => serializeParamValue("yes", "boolean")).toThrow(
       "invalidBoolean",
     );
+  });
+
+  it("classifies, filters, and orders parameters by namespace", () => {
+    const parameters = [
+      { id: 1, paramCode: "plugins.mem0.base_url", remark: "Memory endpoint" },
+      { id: 2, paramCode: "server.tracing.enabled", remark: "Tracing" },
+      { id: 3, paramCode: "server.auth.secret", remark: "Credential" },
+      { id: 4, paramCode: "server.port", remark: "Listen port" },
+      { id: 5, paramCode: "unscoped.setting", remark: "General setting" },
+    ];
+
+    expect(getParamTopGroup("SESSION_STATE.timeout")).toBe("session_state");
+    expect(getParamTopGroup("unscoped.setting")).toBe("general");
+    expect(getParamSubGroup("server.auth.secret")).toBe("auth");
+    expect(getParamSubGroup("server.port")).toBe("_root");
+    expect(filterParams(parameters, { category: "server", search: "credential" }))
+      .toEqual([parameters[2]]);
+
+    const sections = buildParamSections(parameters);
+    expect(sections.map((section) => section.key)).toEqual([
+      "server:_root",
+      "server:auth",
+      "server:tracing",
+      "plugins:mem0",
+      "general:_all",
+    ]);
+    expect(sections[1]?.items[0]?.paramCode).toBe("server.auth.secret");
   });
 
   it("validates every replacement line and calculates its UTF-8 size", () => {

@@ -109,6 +109,15 @@ async def startToChat(conn: "ConnectionHandler", text, client_message_id=None):
     conn.client_abort = False
 
     future = conn.executor.submit(conn.chat, actual_text)
+
+    def persist_completed_turn(completed_future):
+        try:
+            completed_future.result()
+        except Exception:
+            return
+        conn.schedule_incremental_memory_save()
+
+    future.add_done_callback(persist_completed_turn)
     if conn.is_web_chat:
         conn.web_chat_future = future
 

@@ -1,8 +1,36 @@
 import type {
   FeatureMenu,
+  Param,
   ParamValueType,
   ReplacementValidationError,
 } from "@/features/admin/types";
+
+export const PARAM_TOP_GROUP_ORDER = [
+  "server",
+  "plugins",
+  "log",
+  "session_state",
+  "general",
+] as const;
+
+export type ParamTopGroup = (typeof PARAM_TOP_GROUP_ORDER)[number];
+
+export interface ParamSection {
+  items: Param[];
+  key: string;
+  subGroup: string;
+  topGroup: ParamTopGroup;
+}
+
+const SERVER_SUBGROUP_ORDER = [
+  "_root",
+  "auth",
+  "connection",
+  "registry",
+  "resilience",
+  "metrics",
+  "tracing",
+] as const;
 
 const SENSITIVE_PARAM_NAMES = new Set([
   "access_key_secret",
@@ -39,6 +67,94 @@ export type FeatureId = (typeof FEATURE_IDS)[number];
 
 function normalizedParamCode(value: string): string {
   return value.trim().toLowerCase().replace(/[.-]+/g, "_");
+}
+
+export function getParamTopGroup(paramCode: string): ParamTopGroup {
+  const normalized = paramCode.trim().toLowerCase();
+  if (normalized.startsWith("server.")) return "server";
+  if (normalized.startsWith("plugins.")) return "plugins";
+  if (normalized.startsWith("log.")) return "log";
+  if (normalized.startsWith("session_state.")) return "session_state";
+  return "general";
+}
+
+export function getParamSubGroup(paramCode: string): string {
+  const topGroup = getParamTopGroup(paramCode);
+  if (topGroup !== "server" && topGroup !== "plugins") return "_all";
+  const segments = paramCode.trim().toLowerCase().split(".").filter(Boolean);
+  return segments.length >= 3 ? segments[1] || "_root" : "_root";
+}
+
+export function orderParamSubgroups(
+  subgroups: readonly string[],
+  topGroup: ParamTopGroup,
+): string[] {
+  const unique = [...new Set(subgroups)];
+  if (topGroup !== "server") return unique.sort((left, right) => left.localeCompare(right));
+  return unique.sort((left, right) => {
+    const leftIndex = SERVER_SUBGROUP_ORDER.indexOf(left as (typeof SERVER_SUBGROUP_ORDER)[number]);
+    const rightIndex = SERVER_SUBGROUP_ORDER.indexOf(right as (typeof SERVER_SUBGROUP_ORDER)[number]);
+    if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
+    if (leftIndex === -1) return 1;
+    if (rightIndex === -1) return -1;
+    return leftIndex - rightIndex;
+  });
+}
+
+export function filterParams(
+  params: readonly Param[],
+  filters: {
+    category?: ParamTopGroup | "all";
+    search?: string;
+    subcategory?: string;
+  },
+): Param[] {
+  const search = filters.search?.trim().toLowerCase() || "";
+  return params.filter((parameter) => {
+    const paramCode = parameter.paramCode || "";
+    const topGroup = getParamTopGroup(paramCode);
+    if (filters.category && filters.category !== "all" && topGroup !== filters.category) {
+      return false;
+    }
+    if (
+      filters.subcategory &&
+      filters.subcategory !== "all" &&
+      getParamSubGroup(paramCode) !== filters.subcategory
+    ) {
+      return false;
+    }
+    if (!search) return true;
+    return paramCode.toLowerCase().includes(search) ||
+      (parameter.remark || "").toLowerCase().includes(search);
+  });
+}
+
+export function buildParamSections(params: readonly Param[]): ParamSection[] {
+  const sections = new Map<string, ParamSection>();
+  for (const parameter of params) {
+    const topGroup = getParamTopGroup(parameter.paramCode || "");
+    const subGroup = getParamSubGroup(parameter.paramCode || "");
+    const key = `${topGroup}:${subGroup}`;
+    const section = sections.get(key) || { items: [], key, subGroup, topGroup };
+    section.items.push(parameter);
+    sections.set(key, section);
+  }
+
+  for (const section of sections.values()) {
+    section.items.sort((left, right) =>
+      (left.paramCode || "").localeCompare(right.paramCode || ""),
+    );
+  }
+
+  return [...sections.values()].sort((left, right) => {
+    const topDifference = PARAM_TOP_GROUP_ORDER.indexOf(left.topGroup) -
+      PARAM_TOP_GROUP_ORDER.indexOf(right.topGroup);
+    if (topDifference) return topDifference;
+    return orderParamSubgroups(
+      [left.subGroup, right.subGroup],
+      left.topGroup,
+    ).indexOf(left.subGroup) === 0 ? -1 : 1;
+  });
 }
 
 export function isSensitiveParamCode(value: string): boolean {

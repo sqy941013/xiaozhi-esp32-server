@@ -19,6 +19,9 @@ interface RawPage<T> {
   total?: number;
 }
 
+const PARAM_FETCH_LIMIT = 500;
+const MAX_PARAM_PAGES = 200;
+
 function page<T>(value?: RawPage<T>): PageData<T> {
   return { list: [...(value?.list || [])], total: Number(value?.total) || 0 };
 }
@@ -99,6 +102,27 @@ export async function getParams(params: {
       url: "/admin/params/page",
     }),
   );
+}
+
+export async function getAllParams(paramCode = ""): Promise<PageData<Param>> {
+  const list: Param[] = [];
+  let total = 0;
+
+  for (let pageNumber = 1; pageNumber <= MAX_PARAM_PAGES; pageNumber += 1) {
+    const current = await getParams({
+      limit: PARAM_FETCH_LIMIT,
+      page: pageNumber,
+      paramCode,
+    });
+    list.push(...current.list);
+    total = Math.max(total, current.total, list.length);
+
+    if (!current.list.length || list.length >= current.total) {
+      return { list, total };
+    }
+  }
+
+  throw new Error("paramsPaginationLimitExceeded");
 }
 
 export function createParam(input: ParamInput): Promise<void> {
