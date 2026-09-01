@@ -30,6 +30,7 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - ${XIAOZHI_RUNTIME_DIR:-.}/data:/opt/xiaozhi-esp32-server/data
+      - ${XIAOZHI_MUSIC_DIR:-./music}:/opt/xiaozhi-esp32-server/music:ro
       - ${XIAOZHI_RUNTIME_DIR:-.}/models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt:ro
     healthcheck:
       test:
