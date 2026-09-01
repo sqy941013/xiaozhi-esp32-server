@@ -187,6 +187,21 @@ describe("useDeviceWebChat", () => {
     });
   });
 
+  it("refreshes long-term memories after a turn without ending the session", async () => {
+    const { result, socket } = await connectHook();
+
+    act(() => socket.receive({
+      event: "memory_updated",
+      memory_status: "COMMITTED",
+      message: "长期记忆已更新",
+      type: "web_chat",
+    }));
+
+    await waitFor(() => expect(result.current.memoryRevision).toBe(1));
+    expect(result.current.phase).toBe("ready");
+    expect(result.current.memoryReceipt).toBeUndefined();
+  });
+
   it("polls the manager state after an unexpected ready-session disconnect", async () => {
     const { result, socket } = await connectHook();
 

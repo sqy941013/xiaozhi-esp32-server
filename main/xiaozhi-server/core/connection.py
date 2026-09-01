@@ -119,6 +119,16 @@ class ConnectionHandler:
         self.web_chat_turn_outcome = None
         self.web_chat_initialization_error = None
 
+        # Mem0 is long-term memory, while ``Dialogue`` remains the source of
+        # short-term conversational context. Persist completed turns as they
+        # finish so long-lived hardware/web connections do not delay durable
+        # memories until disconnect.
+        self.memory_save_lock = asyncio.Lock()
+        self.memory_save_tasks = set()
+        self.memory_persisted_message_ids = set()
+        self.memory_commit_count = 0
+        self.memory_no_change_count = 0
+
         self.need_bind = False  # 是否需要绑定设备
         self.bind_completed_event = asyncio.Event()
         self.bind_code = None  # 绑定设备的验证码
@@ -342,29 +352,32 @@ class ConnectionHandler:
 
                 threading.Thread(target=generate_title_task, daemon=True).start()
 
-            # 守护线程2：走老流程记忆保存（仅记忆，不含标题）
+            # Mem0 按轮增量保存，断开时只补写尚未落库的完整轮次。
             if self.memory:
-                # 使用线程池异步保存记忆
-                def save_memory_task():
-                    try:
-                        # 创建新事件循环（避免与主循环冲突）
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        loop.run_until_complete(
-                            self.memory.save_memory(
-                                self.dialogue.dialogue, self.session_id
-                            )
-                        )
-                    except Exception as e:
-                        self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
-                    finally:
+                if self._incremental_memory_enabled():
+                    status = await self._persist_pending_memories()
+                    if status == "FAILED":
+                        self.logger.bind(tag=TAG).error("断开连接时补写长期记忆失败")
+                else:
+                    # 非 Mem0 记忆提供器保持原有的会话结束保存行为。
+                    def save_memory_task():
                         try:
-                            loop.close()
-                        except Exception:
-                            pass
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            loop.run_until_complete(
+                                self.memory.save_memory(
+                                    self.dialogue.dialogue, self.session_id
+                                )
+                            )
+                        except Exception as e:
+                            self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
+                        finally:
+                            try:
+                                loop.close()
+                            except Exception:
+                                pass
 
-                # 启动线程保存记忆，不等待完成
-                threading.Thread(target=save_memory_task, daemon=True).start()
+                    threading.Thread(target=save_memory_task, daemon=True).start()
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
         finally:
@@ -453,11 +466,124 @@ class ConnectionHandler:
             return False
 
     def _web_chat_memory_type(self):
+        return self._memory_type()
+
+    def _memory_type(self):
         try:
             selected = self.config.get("selected_module", {}).get("Memory")
             return self.config.get("Memory", {}).get(selected, {}).get("type", "")
         except Exception:
             return ""
+
+    def _incremental_memory_enabled(self):
+        return self.memory is not None and self._memory_type() == "mem0ai"
+
+    @staticmethod
+    def _memory_message_id(message):
+        return getattr(message, "uniq_id", str(id(message)))
+
+    def _pending_memory_messages(self):
+        """Return the unsaved prefix ending at the latest completed turn."""
+        persisted = getattr(self, "memory_persisted_message_ids", set())
+        messages = [
+            message
+            for message in self.dialogue.dialogue
+            if message.role in {"user", "assistant"}
+            and not getattr(message, "is_temporary", False)
+            and message.content
+            and self._memory_message_id(message) not in persisted
+        ]
+
+        first_user = next(
+            (index for index, message in enumerate(messages) if message.role == "user"),
+            None,
+        )
+        if first_user is None:
+            return []
+        messages = messages[first_user:]
+
+        # A user message is not durable until its turn has completed. This
+        # avoids saving half-written/failed turns while still allowing a later
+        # finalization pass to retry them once an assistant response exists.
+        last_assistant = next(
+            (
+                index
+                for index in range(len(messages) - 1, -1, -1)
+                if messages[index].role == "assistant"
+            ),
+            None,
+        )
+        if last_assistant is None:
+            return []
+        return messages[: last_assistant + 1]
+
+    async def _persist_pending_memories(self, notify_web=False):
+        """Persist completed, previously unsaved turns to long-term Mem0."""
+        if not self._incremental_memory_enabled():
+            return "SKIPPED"
+
+        if not hasattr(self, "memory_save_lock"):
+            self.memory_save_lock = asyncio.Lock()
+        if not hasattr(self, "memory_persisted_message_ids"):
+            self.memory_persisted_message_ids = set()
+
+        async with self.memory_save_lock:
+            messages = self._pending_memory_messages()
+            if not messages:
+                return "SKIPPED"
+
+            message_ids = {self._memory_message_id(message) for message in messages}
+            try:
+                result = await asyncio.wait_for(
+                    self.memory.save_memory(messages, self.session_id),
+                    timeout=180,
+                )
+            except asyncio.TimeoutError:
+                self.logger.bind(tag=TAG).error("逐轮长期记忆保存超时")
+                return "FAILED"
+            except Exception as error:
+                self.logger.bind(tag=TAG).error(
+                    f"逐轮长期记忆保存失败: {type(error).__name__}: {error}"
+                )
+                return "FAILED"
+
+            # An empty result is a successful policy decision (no durable fact),
+            # so mark the turn handled and never re-submit it on disconnect.
+            self.memory_persisted_message_ids.update(message_ids)
+            results = result.get("results") if isinstance(result, dict) else None
+            status = "NO_CHANGE" if isinstance(results, list) and not results else "COMMITTED"
+            if status == "COMMITTED":
+                self.memory_commit_count = getattr(self, "memory_commit_count", 0) + 1
+            else:
+                self.memory_no_change_count = getattr(self, "memory_no_change_count", 0) + 1
+
+            self.logger.bind(tag=TAG).info(
+                f"逐轮长期记忆处理完成: status={status}, messages={len(messages)}"
+            )
+            if notify_web and status == "COMMITTED":
+                await self._send_web_chat_event(
+                    "memory_updated",
+                    memory_status=status,
+                    message="长期记忆已更新",
+                )
+            return status
+
+    def schedule_incremental_memory_save(self):
+        """Schedule non-blocking Mem0 extraction from any worker thread."""
+        if not self._incremental_memory_enabled():
+            return
+        loop = getattr(self, "loop", None)
+        if loop is None or loop.is_closed():
+            return
+
+        def start_task():
+            task = loop.create_task(
+                self._persist_pending_memories(notify_web=self.is_web_chat)
+            )
+            self.memory_save_tasks.add(task)
+            task.add_done_callback(self.memory_save_tasks.discard)
+
+        loop.call_soon_threadsafe(start_task)
 
     async def _wait_for_web_chat_reports(self):
         if not self.report_thread or not self.report_thread.is_alive():
@@ -512,6 +638,17 @@ class ConnectionHandler:
                 memory_type = self._web_chat_memory_type()
                 if self.memory is None or memory_type in {"", "nomem", "mem_report_only"}:
                     memory_status = "SKIPPED"
+                elif memory_type == "mem0ai":
+                    pending_status = await self._persist_pending_memories()
+                    if pending_status == "FAILED":
+                        memory_status = "FAILED"
+                        result_message = "记忆保存失败，请检查 Mem0 服务"
+                    elif getattr(self, "memory_commit_count", 0) > 0:
+                        memory_status = "COMMITTED"
+                        result_message = "长期记忆已经保存"
+                    else:
+                        memory_status = "NO_CHANGE"
+                        result_message = "本次会话没有需要保存的长期记忆"
                 elif len(actual_messages) < 2:
                     memory_status = "NO_CHANGE"
                     result_message = "本次会话没有可提取的新记忆"

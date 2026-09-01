@@ -194,6 +194,12 @@ export function useDeviceWebChat(deviceId: string) {
             );
             return;
           }
+          if (eventName === "memory_updated") {
+            if (frameString(record, "memory_status") === "COMMITTED") {
+              setMemoryRevision((value) => value + 1);
+            }
+            return;
+          }
           if (eventName === "memory_pending") {
             changePhase("finalizing");
             setMemoryReceipt({ status: "PENDING" });

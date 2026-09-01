@@ -24,6 +24,7 @@ cache_manager.set(
 )
 
 from core.connection import ConnectionHandler
+from core.utils.dialogue import Dialogue, Message
 from core.websocket_server import parse_web_chat_request
 
 
@@ -271,6 +272,101 @@ class WebChatRoutingTest(unittest.IsolatedAsyncioTestCase):
                 call("CLOSED", "SKIPPED", "当前智能体未启用可保存的记忆"),
             ]
         )
+
+
+class IncrementalMemoryPersistenceTest(unittest.IsolatedAsyncioTestCase):
+    def handler(self, side_effect, is_web_chat=False):
+        handler = object.__new__(ConnectionHandler)
+        handler.config = {
+            "selected_module": {"Memory": "Memory_mem0ai"},
+            "Memory": {"Memory_mem0ai": {"type": "mem0ai"}},
+        }
+        handler.dialogue = Dialogue()
+        save_memory = (
+            AsyncMock(side_effect=side_effect)
+            if isinstance(side_effect, (list, tuple, Exception))
+            else AsyncMock(return_value=side_effect)
+        )
+        handler.memory = SimpleNamespace(save_memory=save_memory)
+        handler.memory_save_lock = asyncio.Lock()
+        handler.memory_save_tasks = set()
+        handler.memory_persisted_message_ids = set()
+        handler.memory_commit_count = 0
+        handler.memory_no_change_count = 0
+        handler.session_id = "session-1"
+        handler.is_web_chat = is_web_chat
+        handler._send_web_chat_event = AsyncMock()
+        bound_logger = SimpleNamespace(info=Mock(), error=Mock())
+        handler.logger = SimpleNamespace(bind=Mock(return_value=bound_logger))
+        return handler
+
+    async def test_only_completed_unsaved_turns_are_persisted_once(self):
+        handler = self.handler(
+            [
+                {"results": [{"memory": "长期事实"}]},
+                {"results": []},
+            ],
+            is_web_chat=True,
+        )
+        first_user = Message(role="user", content="请长期记住我的生日。")
+        first_assistant = Message(role="assistant", content="好的。")
+        second_user = Message(role="user", content="今天有点冷。")
+        handler.dialogue.put(first_user)
+        handler.dialogue.put(first_assistant)
+        handler.dialogue.put(second_user)
+
+        status = await ConnectionHandler._persist_pending_memories(
+            handler, notify_web=True
+        )
+
+        self.assertEqual("COMMITTED", status)
+        saved_messages = handler.memory.save_memory.await_args_list[0].args[0]
+        self.assertEqual([first_user, first_assistant], saved_messages)
+        handler._send_web_chat_event.assert_awaited_once_with(
+            "memory_updated",
+            memory_status="COMMITTED",
+            message="长期记忆已更新",
+        )
+
+        second_assistant = Message(role="assistant", content="注意保暖。")
+        handler.dialogue.put(second_assistant)
+        status = await ConnectionHandler._persist_pending_memories(handler)
+        self.assertEqual("NO_CHANGE", status)
+        saved_messages = handler.memory.save_memory.await_args_list[1].args[0]
+        self.assertEqual([second_user, second_assistant], saved_messages)
+
+        status = await ConnectionHandler._persist_pending_memories(handler)
+        self.assertEqual("SKIPPED", status)
+        self.assertEqual(2, handler.memory.save_memory.await_count)
+
+    async def test_failed_turn_remains_pending_for_retry(self):
+        handler = self.handler(
+            [RuntimeError("mem0 unavailable"), {"results": [{"memory": "生日"}]}]
+        )
+        handler.dialogue.put(Message(role="user", content="请记住你的生日。"))
+        handler.dialogue.put(Message(role="assistant", content="记住了。"))
+
+        first_status = await ConnectionHandler._persist_pending_memories(handler)
+        self.assertEqual("FAILED", first_status)
+        self.assertEqual(set(), handler.memory_persisted_message_ids)
+
+        retry_status = await ConnectionHandler._persist_pending_memories(handler)
+        self.assertEqual("COMMITTED", retry_status)
+        self.assertEqual(2, handler.memory.save_memory.await_count)
+
+    async def test_empty_extraction_is_handled_and_not_retried(self):
+        handler = self.handler({"results": []})
+        handler.dialogue.put(Message(role="user", content="把音量调到85。"))
+        handler.dialogue.put(Message(role="assistant", content="已经调好了。"))
+
+        self.assertEqual(
+            "NO_CHANGE", await ConnectionHandler._persist_pending_memories(handler)
+        )
+        self.assertEqual(
+            "SKIPPED", await ConnectionHandler._persist_pending_memories(handler)
+        )
+        self.assertEqual(1, handler.memory.save_memory.await_count)
+        self.assertEqual(1, handler.memory_no_change_count)
 
 
 if __name__ == "__main__":
