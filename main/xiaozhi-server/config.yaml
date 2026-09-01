@@ -178,18 +178,25 @@ plugins:
     # ragflow知识库id
     dataset_ids: ["123456789"]
   # 联网搜索插件配置
-  # 支持秘塔(metaso)和Tavily两个搜索源
+  # 支持 AnySearch、秘塔(metaso)和 Tavily 搜索源
+  # AnySearch API 文档：https://www.anysearch.com/docs
   # 秘塔API Key申请：https://metaso.cn/search-api/api-keys
   # Tavily API Key申请：https://app.tavily.com/home
   web_search:
-    # 搜索源：metaso / tavily
-    provider: "metaso"
+    # 搜索源：anysearch / metaso / tavily
+    provider: "anysearch"
     # 工具描述，用于告知LLM何时调用此工具，可根据需要自定义
     description: "联网搜索工具。当用户明确需要联网搜索问题时使用此工具。"
-    # 返回结果数量（默认5）
+    # 返回结果数量（1-10，默认5）
     max_results: 5
-    # 秘塔API Key（mk-前缀） / Tavily API Key（tvly-前缀）
-    api_key: "mk-xxx"
+    # AnySearch 支持多 Key 轮询和故障切换
+    # 留空时使用 AnySearch 匿名额度；配置示例：["key-1", "key-2"]
+    api_keys: []
+    zone: "cn"       # cn / intl
+    language: "zh-CN"
+    tag: ""           # 可选，例如 code.doc
+    # 秘塔/Tavily 兼容的单 Key；AnySearch 未配置 api_keys 时也会回退使用
+    api_key: ""
 # 声纹识别配置
 voiceprint:
   # 声纹接口地址

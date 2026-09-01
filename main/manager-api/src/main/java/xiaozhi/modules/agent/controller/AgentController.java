@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
+import cn.hutool.json.JSONUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -37,6 +38,7 @@ import xiaozhi.common.user.UserDetail;
 import xiaozhi.common.utils.JsonUtils;
 import xiaozhi.common.utils.Result;
 import xiaozhi.common.utils.ResultUtils;
+import xiaozhi.common.utils.SensitiveDataUtils;
 import xiaozhi.modules.agent.dto.AgentChatHistoryDTO;
 import xiaozhi.modules.agent.dto.AgentChatSessionDTO;
 import xiaozhi.modules.agent.dto.AgentCreateDTO;
@@ -44,6 +46,7 @@ import xiaozhi.modules.agent.dto.AgentDTO;
 import xiaozhi.modules.agent.dto.AgentMemoryDTO;
 import xiaozhi.modules.agent.dto.AgentUpdateDTO;
 import xiaozhi.modules.agent.entity.AgentEntity;
+import xiaozhi.modules.agent.entity.AgentPluginMapping;
 import xiaozhi.modules.agent.entity.AgentTemplateEntity;
 import xiaozhi.modules.agent.dto.AgentTagDTO;
 import xiaozhi.modules.agent.entity.AgentTagEntity;
@@ -127,7 +130,24 @@ public class AgentController {
     @RequiresPermissions("sys:role:normal")
     public Result<AgentInfoVO> getAgentById(@PathVariable("id") String id) {
         AgentInfoVO agent = agentService.getAgentById(id, SecurityUser.getUserId());
+        maskPluginCredentials(agent);
         return ResultUtils.success(agent);
+    }
+
+    private void maskPluginCredentials(AgentInfoVO agent) {
+        if (agent == null || agent.getFunctions() == null) {
+            return;
+        }
+        for (AgentPluginMapping mapping : agent.getFunctions()) {
+            try {
+                mapping.setParamInfo(SensitiveDataUtils.maskSensitiveFields(
+                        JSONUtil.parseObj(mapping.getParamInfo())).toString());
+            } catch (Exception ignored) {
+                // Invalid plugin JSON is unusable; do not echo it back because it
+                // may still contain a credential-like value.
+                mapping.setParamInfo("{}");
+            }
+        }
     }
 
     @PostMapping

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, LoaderCircle, RefreshCcw } from "lucide-react";
+import { Check, Copy, LoaderCircle, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -61,6 +61,74 @@ function ParamField({
       ? JSON.stringify(value ?? {}, null, 2)
       : "");
   const [password, setPassword] = useState("");
+  const [secretItems, setSecretItems] = useState<string[]>(() => {
+    if (Array.isArray(value)) {
+      const items = value.filter((item): item is string => typeof item === "string");
+      return items.length ? items : [""];
+    }
+    return typeof value === "string" && value.trim()
+      ? value.split(/[\n,;，；]+/).map((item) => item.trim()).filter(Boolean)
+      : [""];
+  });
+
+  if (field.type === "password_array") {
+    function commit(nextItems: string[]) {
+      setSecretItems(nextItems);
+      onChange(nextItems.map((item) => item.trim()).filter(Boolean));
+    }
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label>{field.label}</Label>
+          <Button
+            aria-label={`${field.label} +`}
+            onClick={() => commit([...secretItems, ""])}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="mr-1 size-3.5" />
+            API Key
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {secretItems.map((item, index) => (
+            <div className="flex gap-2" key={`${field.key}-${index}`}>
+              <Input
+                aria-label={`${field.label} ${index + 1}`}
+                autoComplete="off"
+                onChange={(event) => {
+                  const nextItems = [...secretItems];
+                  nextItems[index] = event.target.value;
+                  commit(nextItems);
+                }}
+                placeholder={field.remark || `API Key ${index + 1}`}
+                type="password"
+                value={item}
+              />
+              <Button
+                aria-label={`${field.label} ${index + 1} ×`}
+                disabled={secretItems.length === 1 && item === ""}
+                onClick={() => {
+                  const nextItems = secretItems.filter((_, itemIndex) => itemIndex !== index);
+                  commit(nextItems.length ? nextItems : [""]);
+                }}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        {field.remark ? (
+          <p className="text-xs text-muted-foreground">{field.remark}</p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (field.type === "boolean" || field.type === "bool") {
     return (

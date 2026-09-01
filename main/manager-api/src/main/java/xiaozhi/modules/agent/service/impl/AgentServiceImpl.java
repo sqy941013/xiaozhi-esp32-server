@@ -19,6 +19,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.repository.IRepository;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import lombok.AllArgsConstructor;
 import xiaozhi.common.constant.Constant;
 import xiaozhi.common.exception.ErrorCode;
@@ -30,6 +32,7 @@ import xiaozhi.common.service.impl.BaseServiceImpl;
 import xiaozhi.common.user.UserDetail;
 import xiaozhi.common.utils.ConvertUtils;
 import xiaozhi.common.utils.JsonUtils;
+import xiaozhi.common.utils.SensitiveDataUtils;
 import xiaozhi.modules.agent.dao.AgentDao;
 import xiaozhi.modules.agent.dao.AgentTagDao;
 import xiaozhi.modules.agent.dto.AgentCreateDTO;
@@ -465,11 +468,16 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
                 AgentPluginMapping m = new AgentPluginMapping();
                 m.setAgentId(agentId);
                 m.setPluginId(info.getPluginId());
-                m.setParamInfo(JsonUtils.toJsonString(info.getParamInfo()));
                 AgentPluginMapping old = existMap.get(info.getPluginId());
                 if (old != null) {
                     // 已存在，设置id表示更新
                     m.setId(old.getId());
+                    JSONObject restored = SensitiveDataUtils.restoreMaskedSensitiveFields(
+                            JSONUtil.parseObj(old.getParamInfo()),
+                            new JSONObject(info.getParamInfo()));
+                    m.setParamInfo(restored.toString());
+                } else {
+                    m.setParamInfo(JsonUtils.toJsonString(info.getParamInfo()));
                 }
                 return m;
             }).toList();

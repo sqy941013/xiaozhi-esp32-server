@@ -89,6 +89,7 @@ export type PluginFieldType =
   | "json"
   | "number"
   | "password"
+  | "password_array"
   | "string";
 
 export interface PluginField {
